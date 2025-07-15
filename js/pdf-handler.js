@@ -212,21 +212,6 @@ class PDFHandler {
 
             // Store individual radio buttons for overlay system
             this.individualRadioButtons = individualRadioButtons;
-            
-            console.log('Radio groups created:', Array.from(radioGroups.values()).map(g => ({
-                id: g.id,
-                name: g.name,
-                displayName: g.displayName,
-                options: g.options
-            })));
-            
-            console.log('Individual radio buttons:', individualRadioButtons.map(r => ({
-                id: r.id,
-                name: r.name,
-                groupId: r.groupId,
-                groupName: r.groupName,
-                value: r.radioOptions?.[0] || r.name
-            })));
 
             return this.formFields;
         } catch (error) {
@@ -652,19 +637,9 @@ class PDFHandler {
             input.addEventListener('click', (e) => {
                 const groupField = this.formFields.find(f => f.id === field.groupId);
                 
-                console.log(`Radio button clicked:`, {
-                    fieldName: field.name,
-                    fieldValue: e.target.value,
-                    groupId: field.groupId,
-                    groupName: field.groupName,
-                    currentGroupValue: groupField?.value
-                });
-                
                 if (groupField) {
                     // Check if this radio button was already selected BEFORE the click
                     const wasSelected = groupField.value === e.target.value;
-                    
-                    console.log(`Was selected: ${wasSelected}`);
                     
                     if (wasSelected) {
                         // Prevent default radio button behavior
@@ -674,8 +649,6 @@ class PDFHandler {
                         e.target.checked = false;
                         groupField.value = '';
                         this.updateFieldValue(field.groupId, '');
-                        
-                        console.log(`Cleared radio group: ${field.groupName}`);
                         
                         // Clear all overlay radio buttons in this group
                         const overlayRadios = document.querySelectorAll(`input[name="${field.groupName}"]`);
@@ -696,8 +669,6 @@ class PDFHandler {
                         groupField.value = e.target.value;
                         this.updateFieldValue(field.groupId, e.target.value);
                         
-                        console.log(`Selected radio button: ${e.target.value} in group: ${field.groupName}`);
-                        
                         // Update all overlay radio buttons in this group
                         const overlayRadios = document.querySelectorAll(`input[name="${field.groupName}"]`);
                         overlayRadios.forEach(radio => {
@@ -713,8 +684,6 @@ class PDFHandler {
                         // Update all individual radio overlays in this group
                         this.updateFormFieldOverlays();
                     }
-                } else {
-                    console.error(`Could not find group field for groupId: ${field.groupId}`);
                 }
             });
         } else {

@@ -34,6 +34,9 @@ function initializeApp() {
         // Setup keyboard shortcuts
         setupKeyboardShortcuts();
 
+        // Setup panel toggle
+        setupPanelToggle();
+
         // Setup service worker
         setupServiceWorker();
 
@@ -123,7 +126,18 @@ function setupKeyboardShortcuts() {
 
         switch (event.key) {
             case 'Escape':
-                if (uiManager.currentView === 'editor') {
+                // First check if panel is visible and close it
+                const formPanel = document.getElementById('form-panel');
+                if (formPanel && formPanel.classList.contains('visible')) {
+                    const toggleButton = document.getElementById('toggle-panel-btn');
+                    const panelOverlay = document.getElementById('panel-overlay');
+                    
+                    formPanel.classList.remove('visible');
+                    panelOverlay.classList.remove('visible');
+                    toggleButton.classList.remove('active');
+                    event.preventDefault();
+                } else if (uiManager.currentView === 'editor') {
+                    // Only handle back navigation if panel is not visible
                     uiManager.showPDFManagement();
                     event.preventDefault();
                 }
@@ -170,6 +184,45 @@ function setupKeyboardShortcuts() {
                 break;
         }
     });
+}
+
+/**
+ * Setup panel toggle
+ */
+function setupPanelToggle() {
+    const toggleButton = document.getElementById('toggle-panel-btn');
+    const panelOverlay = document.getElementById('panel-overlay');
+    
+    if (toggleButton) {
+        toggleButton.addEventListener('click', () => {
+            const formPanel = document.getElementById('form-panel');
+            const isVisible = formPanel.classList.contains('visible');
+            
+            if (isVisible) {
+                // Hide panel
+                formPanel.classList.remove('visible');
+                panelOverlay.classList.remove('visible');
+                toggleButton.classList.remove('active');
+            } else {
+                // Show panel
+                formPanel.classList.add('visible');
+                panelOverlay.classList.add('visible');
+                toggleButton.classList.add('active');
+            }
+        });
+    }
+    
+    // Close panel when clicking on overlay
+    if (panelOverlay) {
+        panelOverlay.addEventListener('click', () => {
+            const formPanel = document.getElementById('form-panel');
+            const toggleButton = document.getElementById('toggle-panel-btn');
+            
+            formPanel.classList.remove('visible');
+            panelOverlay.classList.remove('visible');
+            toggleButton.classList.remove('active');
+        });
+    }
 }
 
 /**

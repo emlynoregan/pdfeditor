@@ -32,14 +32,17 @@
     gap: 1rem;
 }
 
+/* Editor Controls */
 .editor-controls {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 2rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
 }
 
-.zoom-controls, .page-controls {
+.zoom-controls, .page-controls, .panel-controls {
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -52,83 +55,52 @@
     text-align: center;
 }
 
-/* Editor Content Layout */
+/* Editor Content */
 .editor-content {
     display: flex;
-    min-height: 70vh;
+    flex: 1;
+    overflow: hidden;
+    background: #f5f5f5;
+    transition: all 0.3s ease;
 }
 
 .pdf-viewer {
     flex: 1;
     position: relative;
     overflow: auto;
-    background: #f3f4f6;
-    border-right: 1px solid #e5e7eb;
+    background: white;
+    border-radius: 8px;
+    margin: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    transition: margin-right 0.3s ease;
 }
 
-/* Form Fields Panel */
-.form-panel {
-    width: 350px;
-    background: #f8f9fa;
-    border-left: 1px solid #e9ecef;
-    padding: 20px;
-    overflow-y: auto;
-    max-height: 600px;
+/* When panel is hidden, PDF viewer takes full width */
+.editor-content:not(.panel-visible) .pdf-viewer {
+    margin-right: 10px;
 }
 
-.form-panel h3 {
-    margin-top: 0;
-    margin-bottom: 15px;
-    color: #495057;
-    font-size: 18px;
-    font-weight: 600;
+/* When panel is visible, PDF viewer leaves space for panel */
+.editor-content.panel-visible .pdf-viewer {
+    margin-right: 0;
 }
 
-.form-fields-tip {
-    background: #e3f2fd;
-    border: 1px solid #bbdefb;
-    border-radius: 4px;
-    padding: 8px 12px;
-    margin-bottom: 15px;
-    color: #1565c0;
-}
-
-.form-fields-tip small {
-    display: block;
-    line-height: 1.4;
-}
-
-.form-fields-list {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-.no-fields {
-    color: #6b7280;
-    text-align: center;
-    font-style: italic;
-    padding: 2rem;
-}
-
-/* PDF Canvas */
 #pdf-canvas {
     display: block;
-    margin: 2rem auto;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    border-radius: 0.5rem;
-    background: white;
+    margin: 20px auto;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    border: 1px solid #ddd;
 }
 
-/* Form Overlay */
+/* Form overlay positioning */
 .form-overlay {
     position: absolute;
     top: 0;
     left: 0;
+    right: 0;
+    bottom: 0;
     pointer-events: none;
-    z-index: 5;
-    /* Debug: Add a subtle border to see overlay boundaries */
-    border: 1px solid rgba(255, 0, 0, 0.1);
+    z-index: 10;
 }
 
 /* Form field overlay positioning */
@@ -653,4 +625,112 @@ textarea.form-field-input-panel {
         border-color: #4b5563;
         color: #f9fafb;
     }
+} 
+
+/* Form Fields Panel */
+.form-panel {
+    width: 350px;
+    background: #f8f9fa;
+    border-left: 1px solid #e9ecef;
+    padding: 20px;
+    overflow-y: auto;
+    max-height: 100vh;
+    position: fixed;
+    right: -350px;
+    top: 0;
+    bottom: 0;
+    z-index: 1000;
+    transition: right 0.3s ease;
+    box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.form-panel.visible {
+    right: 0;
+}
+
+.form-panel h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #495057;
+    font-size: 18px;
+    font-weight: 600;
+    padding-top: 10px;
+    border-bottom: 1px solid #e9ecef;
+    padding-bottom: 10px;
+}
+
+.form-fields-tip {
+    background: #e3f2fd;
+    border: 1px solid #bbdefb;
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin-bottom: 15px;
+    color: #1565c0;
+}
+
+.form-fields-tip small {
+    display: block;
+    line-height: 1.4;
+}
+
+.form-fields-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.no-fields {
+    color: #6b7280;
+    text-align: center;
+    font-style: italic;
+    padding: 2rem;
+}
+
+/* Panel Controls */
+.panel-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#toggle-panel-btn {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    color: #495057;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 14px;
+}
+
+#toggle-panel-btn:hover {
+    background: #e9ecef;
+    border-color: #adb5bd;
+}
+
+#toggle-panel-btn.active {
+    background: #007bff;
+    border-color: #007bff;
+    color: white;
+}
+
+.panel-icon {
+    margin-right: 4px;
+}
+
+/* Overlay to close panel when clicking outside */
+.panel-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 999;
+    display: none;
+}
+
+.panel-overlay.visible {
+    display: block;
 } 
