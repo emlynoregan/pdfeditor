@@ -3,26 +3,59 @@
  * Handles all UI interactions, modal management, and user interface updates
  */
 class UIManager {
-    constructor() {
+    constructor(pdfHandler = null, storageManager = null) {
         this.currentView = 'upload';
         this.currentPDFId = null;
         this.modals = {};
+        this.eventListenersAttached = false;
+        this.pdfHandler = pdfHandler;
+        this.storageManager = storageManager;
         this.initialize();
     }
 
     /**
      * Initialize UI manager
      */
-    initialize() {
+    async initialize() {
         this.setupEventListeners();
         this.setupModals();
-        this.showUploadSection();
+        
+        // Check if there are existing PDFs to determine initial view
+        await this.checkAndSetInitialView();
+    }
+
+    /**
+     * Check storage and set appropriate initial view
+     */
+    async checkAndSetInitialView() {
+        try {
+            const storage = this.storageManager || new StorageManager();
+            const pdfs = await storage.getAllPDFMetadata();
+            
+            if (pdfs.length > 0) {
+                // Has PDFs - show management view and update list
+                this.showPDFManagement();
+                await this.updatePDFList();
+            } else {
+                // No PDFs - show upload view
+                this.showUploadSection();
+            }
+        } catch (error) {
+            console.error('Error checking initial view:', error);
+            // Default to upload view on error
+            this.showUploadSection();
+        }
     }
 
     /**
      * Setup event listeners for UI elements
      */
     setupEventListeners() {
+        // Prevent duplicate event listeners
+        if (this.eventListenersAttached) {
+            console.log('⚠️ UI event listeners already attached, skipping...');
+            return;
+        }
         // File upload
         const uploadBtn = document.getElementById('upload-btn');
         const fileInput = document.getElementById('pdf-file-input');
@@ -100,6 +133,10 @@ class UIManager {
         window.addEventListener('fieldValueChanged', (e) => {
             this.handleFieldValueChanged(e.detail);
         });
+
+        // Mark event listeners as attached
+        this.eventListenersAttached = true;
+        console.log('✅ UI event listeners attached');
     }
 
     /**
@@ -147,8 +184,8 @@ class UIManager {
         this.showLoadingOverlay('Processing PDF files...');
 
         try {
-            const storage = new StorageManager();
-            const pdfHandler = new PDFHandler();
+            const storage = this.storageManager || new StorageManager();
+            const pdfHandler = this.pdfHandler || new PDFHandler();
             let successCount = 0;
             let errorCount = 0;
 
@@ -169,6 +206,7 @@ class UIManager {
                         id: storage.generateId(),
                         name: file.name,
                         data: base64Data,
+                        uploadDate: new Date().toISOString(),
                         metadata: {
                             size: file.size,
                             type: file.type,
@@ -196,6 +234,7 @@ class UIManager {
             if (successCount > 0) {
                 this.showNotification(`Successfully uploaded ${successCount} PDF(s)`, 'success');
                 this.showPDFManagement();
+                await this.updatePDFList();
                 await this.updateStorageUsage();
             }
 
@@ -237,8 +276,8 @@ class UIManager {
         }
 
         try {
-            const storage = new StorageManager();
-            await storage.clearAll();
+            const storage = this.storageManager || new StorageManager();
+            await storage.clearAllPDFs();
             this.showNotification('All PDFs cleared successfully', 'success');
             this.showUploadSection();
         } catch (error) {
@@ -256,7 +295,7 @@ class UIManager {
         this.showLoadingOverlay('Generating PDF...');
 
         try {
-            const storage = new StorageManager();
+            const storage = this.storageManager || new StorageManager();
             const pdfData = await storage.getPDF(this.currentPDFId);
             
             if (!pdfData) {
@@ -413,7 +452,7 @@ class UIManager {
         this.showLoadingOverlay('Loading PDF...');
 
         try {
-            const storage = new StorageManager();
+            const storage = this.storageManager || new StorageManager();
             const pdfData = await storage.getPDF(pdfId);
             
             if (!pdfData) {
@@ -428,7 +467,7 @@ class UIManager {
 
             // Load PDF
             if (!window.pdfHandler) {
-                window.pdfHandler = new PDFHandler();
+                window.pdfHandler = this.pdfHandler || new PDFHandler();
             }
 
             // Set the current PDF ID for form field persistence
@@ -465,15 +504,29 @@ class UIManager {
         if (!listContainer) return;
 
         try {
-            const storage = new StorageManager();
-            const pdfs = await storage.getAllPDFs();
+            const storage = this.storageManager || new StorageManager();
+            const pdfs = await storage.getAllPDFMetadata(); // Use metadata-only method for performance
 
             if (pdfs.length === 0) {
                 listContainer.innerHTML = '<p class="text-center">No PDF files uploaded yet.</p>';
                 return;
             }
 
-            listContainer.innerHTML = pdfs.map(pdf => this.createPDFListItem(pdf)).join('');
+            // Debug: log what we're getting
+            console.log('📋 PDFs array:', pdfs);
+            
+            // Filter and create list items, logging any issues
+            const listItems = pdfs
+                .filter(pdf => {
+                    if (!pdf || !pdf.id) {
+                        console.warn('⚠️ Skipping invalid PDF:', pdf);
+                        return false;
+                    }
+                    return true;
+                })
+                .map(pdf => this.createPDFListItem(pdf));
+            
+            listContainer.innerHTML = listItems.join('');
             
             // Update storage usage indicator
             await this.updateStorageUsage();
@@ -489,26 +542,46 @@ class UIManager {
      * @returns {string} HTML string
      */
     createPDFListItem(pdf) {
-        const uploadDate = new Date(pdf.metadata.uploadDate).toLocaleDateString();
-        const storage = new StorageManager();
-        const fileSize = storage.formatBytes(pdf.metadata.size);
+        // Super defensive - handle any possible invalid input
+        try {
+            if (!pdf || typeof pdf !== 'object') {
+                console.warn('⚠️ createPDFListItem received invalid input:', pdf);
+                return '';
+            }
+            
+            // Ensure all required properties exist with fallbacks
+            const safeId = pdf.id || 'unknown_' + Date.now();
+            const safeName = pdf.name || 'Untitled PDF';
+            const safeUploadDate = pdf.uploadDate || Date.now();
+            const safeSize = pdf.size || 0;
+            const safeMetadata = pdf.metadata || {};
+            
+            const uploadDate = new Date(safeUploadDate).toLocaleDateString();
+            const storage = this.storageManager || new StorageManager();
+            const fileSize = storage.formatBytes(safeSize);
+            const pages = safeMetadata.pages || 'Unknown';
+            const formFields = safeMetadata.formFields || 0;
         
-        return `
-            <div class="pdf-item" data-pdf-id="${pdf.id}">
-                <div class="pdf-item-header">
-                    <div class="pdf-item-title">${pdf.name}</div>
-                    <div class="pdf-item-actions">
-                        <button class="pdf-item-action edit" onclick="uiManager.editPDF('${pdf.id}')">Edit</button>
-                        <button class="pdf-item-action delete" onclick="uiManager.deletePDF('${pdf.id}')">Delete</button>
+            return `
+                <div class="pdf-item" data-pdf-id="${safeId}">
+                    <div class="pdf-item-header">
+                        <div class="pdf-item-title">${safeName}</div>
+                        <div class="pdf-item-actions">
+                            <button class="pdf-item-action edit" onclick="uiManager.editPDF('${safeId}')">Edit</button>
+                            <button class="pdf-item-action delete" onclick="uiManager.deletePDF('${safeId}')">Delete</button>
+                        </div>
+                    </div>
+                    <div class="pdf-item-info">
+                        <div class="pdf-item-size">${fileSize} • ${pages} pages</div>
+                        <div class="pdf-item-date">Uploaded: ${uploadDate}</div>
+                        <div class="pdf-item-fields">${formFields} form fields</div>
                     </div>
                 </div>
-                <div class="pdf-item-info">
-                    <div class="pdf-item-size">${fileSize} • ${pdf.metadata.pages} pages</div>
-                    <div class="pdf-item-date">Uploaded: ${uploadDate}</div>
-                    <div class="pdf-item-fields">${pdf.metadata.formFields} form fields</div>
-                </div>
-            </div>
-        `;
+            `;
+        } catch (error) {
+            console.error('❌ Error creating PDF list item:', error, 'PDF object:', pdf);
+            return '';
+        }
     }
 
     /**
@@ -524,7 +597,7 @@ class UIManager {
      * @param {string} pdfId - PDF ID
      */
     async deletePDF(pdfId) {
-        const storage = new StorageManager();
+        const storage = this.storageManager || new StorageManager();
         const pdf = await storage.getPDF(pdfId);
         
         if (!pdf) return;
@@ -936,7 +1009,7 @@ class UIManager {
         if (!storageText || !storageFill) return;
         
         try {
-            const storage = new StorageManager();
+            const storage = this.storageManager || new StorageManager();
             const storageInfo = await storage.getStorageInfo();
             
             // Update text to show just total usage (no limits)
@@ -951,6 +1024,36 @@ class UIManager {
             storageText.textContent = 'Error loading storage info';
         }
     }
+
+    /**
+     * Show upload section and hide others
+     */
+    showUploadSection() {
+        this.currentView = 'upload';
+        const uploadSection = document.getElementById('upload-section');
+        const managementSection = document.getElementById('pdf-management');
+        const editorSection = document.getElementById('pdf-editor');
+        
+        if (uploadSection) uploadSection.style.display = 'block';
+        if (managementSection) managementSection.style.display = 'none';
+        if (editorSection) editorSection.style.display = 'none';
+    }
+
+    /**
+     * Show PDF management section and hide others
+     */
+    showPDFManagement() {
+        this.currentView = 'management';
+        const uploadSection = document.getElementById('upload-section');
+        const managementSection = document.getElementById('pdf-management');
+        const editorSection = document.getElementById('pdf-editor');
+        
+        if (uploadSection) uploadSection.style.display = 'none';
+        if (managementSection) managementSection.style.display = 'block';
+        if (editorSection) editorSection.style.display = 'none';
+    }
+
+
 
     /**
      * Hide element

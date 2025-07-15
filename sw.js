@@ -1,66 +1,61 @@
-const CACHE_NAME = 'pdf-editor-v10';
+const CACHE_NAME = 'pdf-editor-v16';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/css/style.css',
-  '/css/pdf-editor.css',
-  '/js/storage.js',
-  '/js/pdf-handler.js',
-  '/js/ui-manager.js',
-  '/js/main.js',
-  '/assets/images/favicon.png',
-  '/manifest.json',
-  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
-  'https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js'
+    '/',
+    '/index.html',
+    '/css/style.css',
+    '/css/pdf-editor.css',
+    '/assets/images/favicon.png',
+    '/manifest.json'
+    // Note: JS files excluded to respect cache-busting parameters
 ];
 
-// Install event - cache resources
+console.log('🔄 Service Worker v16 starting...');
+
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('📦 Caching app shell');
-        return cache.addAll(urlsToCache);
-      })
-      .catch((error) => {
-        console.error('❌ Cache installation failed:', error);
-      })
-  );
+    console.log('⚙️ Service Worker v16 installing...');
+    event.waitUntil(
+        caches.open(CACHE_NAME)
+            .then((cache) => {
+                console.log('📦 Caching app shell v16');
+                return cache.addAll(urlsToCache);
+            })
+    );
 });
 
-// Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('🗑️ Deleting old cache:', cacheName);
-            return caches.delete(cacheName);
-          }
+    console.log('🚀 Service Worker v16 activating...');
+    event.waitUntil(
+        caches.keys().then((cacheNames) => {
+            return Promise.all(
+                cacheNames.map((cacheName) => {
+                    if (cacheName !== CACHE_NAME) {
+                        console.log('🗑️ Deleting old cache:', cacheName);
+                        return caches.delete(cacheName);
+                    }
+                })
+            );
         })
-      );
-    })
-  );
+    );
 });
 
-// Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Return cached version or fetch from network
-        return response || fetch(event.request);
-      })
-      .catch(() => {
-        // If both cache and network fail, return offline page for HTML requests
-        if (event.request.headers.get('accept').includes('text/html')) {
-          return caches.match('/index.html');
-        }
-      })
-  );
+    // Skip caching for JS files with version parameters to respect cache-busting
+    const url = new URL(event.request.url);
+    if (url.pathname.endsWith('.js') && url.searchParams.has('v')) {
+        event.respondWith(fetch(event.request));
+        return;
+    }
+    
+    event.respondWith(
+        caches.match(event.request)
+            .then((response) => {
+                // Return cached version or fetch from network
+                return response || fetch(event.request);
+            })
+    );
 });
+
+console.log('✅ Service Worker v16 loaded');
 
 // Background sync for offline actions
 self.addEventListener('sync', (event) => {

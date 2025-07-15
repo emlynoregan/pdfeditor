@@ -3,68 +3,202 @@
  * PDF Editor - Client-side PDF form filling application
  */
 
+console.log('🚀 Main.js starting...');
+
 // Global variables
-let uiManager = null;
-let storageManager = null;
-let pdfHandler = null;
+let pdfHandler;
+let uiManager;
+let storageManager;
+let isInitialized = false;
+let eventListenersAttached = false;
+
+/**
+ * Clear potentially corrupted storage data
+ */
+async function clearCorruptedStorage() {
+    try {
+        // Clear IndexedDB
+        if ('indexedDB' in window) {
+            const deleteReq = indexedDB.deleteDatabase('PDFEditorDB');
+            await new Promise((resolve) => {
+                deleteReq.onsuccess = () => resolve();
+                deleteReq.onerror = () => resolve(); // Don't fail if DB doesn't exist
+            });
+        }
+        
+        // Clear localStorage
+        const keys = Object.keys(localStorage);
+        keys.forEach(key => {
+            if (key.startsWith('pdfeditor_')) {
+                localStorage.removeItem(key);
+            }
+        });
+        
+        console.log('✨ Storage cleared for fresh start');
+    } catch (error) {
+        console.log('⚠️ Storage cleanup had minor issues (this is normal):', error.message);
+    }
+}
 
 /**
  * Initialize the application
  */
 async function initializeApp() {
+    // Prevent duplicate initialization
+    if (isInitialized) {
+        console.log('⚠️ App already initialized, skipping...');
+        return;
+    }
+
+    console.log('🔧 Starting app initialization...');
+    
     try {
-        console.log('🚀 Initializing PDF Editor...');
-        
-        // Show initialization loading
-        showInitializationLoading();
-        
-        // Check for required dependencies
-        if (!checkDependencies()) {
-            hideInitializationLoading();
-            showError('Required dependencies not loaded. Please refresh the page.');
-            return;
+        // Show loading overlay
+        const loadingOverlay = document.getElementById('loading-overlay');
+        if (loadingOverlay) {
+            loadingOverlay.classList.remove('hidden');
         }
 
-        // Initialize storage manager and wait for IndexedDB to be ready
-        console.log('📦 Initializing storage...');
+        // Clear corrupted storage first
+        await clearCorruptedStorage();
+        
+        // Initialize storage manager
         storageManager = new StorageManager();
-        await storageManager.initDB(); // Wait for IndexedDB initialization
+        await storageManager.initialize();
         console.log('✅ Storage initialized');
-        
+
+        // Initialize PDF handler
+        pdfHandler = new PDFHandler(storageManager);
+        console.log('✅ PDF handler ready');
+
         // Initialize UI manager
-        uiManager = new UIManager();
-        
-        // Make uiManager globally accessible for onclick handlers
+        uiManager = new UIManager(pdfHandler, storageManager);
+        await uiManager.initialize();
+        console.log('✅ UI initialized');
+
+        // Make globally available
+        window.storageManager = storageManager;
+        window.pdfHandler = pdfHandler;
         window.uiManager = uiManager;
-
-        // Check initial state
-        await checkInitialState();
-
-        // Setup keyboard shortcuts
-        setupKeyboardShortcuts();
-
-        // Setup panel toggle
-        setupPanelToggle();
-
-        // Setup service worker
-        setupServiceWorker();
-
-        console.log('✅ PDF Editor initialized successfully');
         
-        // Hide initialization loading
-        hideInitializationLoading();
+        // UIManager now initializes asynchronously and checks for existing PDFs
+        console.log('✅ UI initialized');
+
+        setupEventListeners();
         
-        // Show welcome message if first time
-        if (isFirstTime()) {
-            showWelcomeMessage();
+        // Hide loading overlay
+        if (loadingOverlay) {
+            loadingOverlay.classList.add('hidden');
         }
 
+        console.log('🎉 App ready!');
+        
+        // Mark as initialized
+        isInitialized = true;
+        
     } catch (error) {
-        console.error('❌ Error initializing PDF Editor:', error);
-        hideInitializationLoading();
-        showError('Failed to initialize application: ' + error.message);
+        console.error('❌ Initialization failed:', error.message);
+        
+        // Show error to user
+        const loadingOverlay = document.getElementById('loading-overlay');
+        if (loadingOverlay) {
+            loadingOverlay.innerHTML = `
+                <div class="loading-content">
+                    <div class="error-message">
+                        <h3>❌ Initialization Error</h3>
+                        <p>Failed to start: ${error.message}</p>
+                        <button onclick="location.reload()" class="retry-btn">🔄 Retry</button>
+                    </div>
+                </div>
+            `;
+        }
     }
 }
+
+function setupEventListeners() {
+    // Prevent duplicate event listeners
+    if (eventListenersAttached) {
+        console.log('⚠️ Event listeners already attached, skipping...');
+        return;
+    }
+
+    // Note: PDF file input is handled by ui-manager.js to prevent conflicts
+
+    // Form panel toggle
+    const formPanelToggle = document.getElementById('form-panel-toggle');
+    if (formPanelToggle) {
+        formPanelToggle.removeEventListener('click', handleFormPanelToggle);
+        formPanelToggle.addEventListener('click', handleFormPanelToggle);
+        console.log('📋 Form panel toggle listener attached');
+    }
+
+    // Keyboard shortcuts
+    document.removeEventListener('keydown', handleKeyboardShortcuts);
+    document.addEventListener('keydown', handleKeyboardShortcuts);
+
+    // Form panel overlay click
+    const formPanelOverlay = document.getElementById('form-panel-overlay');
+    if (formPanelOverlay) {
+        formPanelOverlay.removeEventListener('click', handleFormPanelOverlayClick);
+        formPanelOverlay.addEventListener('click', handleFormPanelOverlayClick);
+        console.log('📋 Form panel overlay listener attached');
+    }
+
+    // Memory monitoring (only in development)
+    if (window.location.hostname === 'localhost') {
+        setInterval(() => {
+            if (window.performance && window.performance.memory) {
+                const memory = window.performance.memory;
+                const usedMB = Math.round(memory.usedJSHeapSize / 1024 / 1024);
+                if (usedMB > 100) { // Only log if over 100MB
+                    console.log('💾 Memory:', usedMB + 'MB');
+                }
+            }
+        }, 30000); // Check every 30 seconds
+    }
+
+    eventListenersAttached = true;
+    console.log('✅ Event listeners attached');
+}
+
+// Event handler functions to prevent duplicate listeners
+function handleFormPanelToggle() {
+    try {
+        uiManager.toggleFormPanel();
+    } catch (error) {
+        console.error('❌ Panel toggle failed:', error.message);
+    }
+}
+
+function handleKeyboardShortcuts(event) {
+    try {
+        if (event.key === 'Escape') {
+            const formPanel = document.getElementById('form-panel');
+            if (formPanel && !formPanel.classList.contains('hidden')) {
+                uiManager.toggleFormPanel();
+            }
+        }
+    } catch (error) {
+        console.error('❌ Keyboard shortcut failed:', error.message);
+    }
+}
+
+function handleFormPanelOverlayClick() {
+    try {
+        uiManager.toggleFormPanel();
+    } catch (error) {
+        console.error('❌ Overlay click failed:', error.message);
+    }
+}
+
+// Error handling for uncaught errors
+window.addEventListener('error', (event) => {
+    console.error('💥 Uncaught error:', event.error?.message || event.message);
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+    console.error('💥 Unhandled promise rejection:', event.reason?.message || event.reason);
+});
 
 /**
  * Check if required dependencies are loaded
@@ -424,8 +558,9 @@ function hideInitializationLoading() {
     }
 }
 
-// Initialize when DOM is ready
+// Start the application when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('📋 DOM ready, starting app...');
     setupErrorHandling();
     setupPerformanceMonitoring();
     addDragDropStyles();
@@ -433,10 +568,4 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeApp();
 });
 
-// Export for potential external use
-window.PDFEditor = {
-    uiManager: () => uiManager,
-    storageManager: () => storageManager,
-    pdfHandler: () => pdfHandler,
-    reinitialize: initializeApp
-}; 
+console.log('✅ Main.js loaded'); 

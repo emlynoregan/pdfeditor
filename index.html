@@ -59,15 +59,14 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/pdf-editor.css">
     
-    <!-- Service Worker Registration -->
+    <!-- Service Worker Disabled for Simplicity -->
     <script>
+        // Disable service worker to avoid caching complexity
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('sw.js').then(function(registration) {
-                    console.log('SW registered: ', registration);
-                }).catch(function(registrationError) {
-                    console.log('SW registration failed: ', registrationError);
-                });
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                    registration.unregister();
+                }
             });
         }
     </script>
@@ -236,9 +235,9 @@
     </div>
 
     <!-- Scripts -->
-    <script src="js/storage.js"></script>
-    <script src="js/pdf-handler.js"></script>
-    <script src="js/ui-manager.js"></script>
-    <script src="js/main.js"></script>
+    <script src="js/storage.js?v=1737022600"></script>
+    <script src="js/pdf-handler.js?v=1737022600"></script>
+    <script src="js/ui-manager.js?v=1737022600"></script>
+    <script src="js/main.js?v=1737022600"></script>
 </body>
 </html> 
