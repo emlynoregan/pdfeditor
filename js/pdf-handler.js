@@ -16,6 +16,14 @@ class PDFHandler {
         
         // Initialize PDF.js
         this.initializePDFJS();
+        
+        // Add resize listener to update overlay positioning
+        window.addEventListener('resize', () => {
+            if (this.canvas) {
+                // Small delay to ensure layout is updated
+                setTimeout(() => this.updateFormFieldOverlays(), 100);
+            }
+        });
     }
 
     /**
@@ -150,6 +158,33 @@ class PDFHandler {
             
             if (!fieldType) return null;
 
+            // Process options for dropdown fields
+            let options = [];
+            if (annotation.options && Array.isArray(annotation.options)) {
+                options = annotation.options.map(option => {
+                    if (typeof option === 'string') {
+                        return option;
+                    } else if (option && typeof option === 'object') {
+                        // Handle option objects with displayValue and exportValue
+                        return option.displayValue || option.exportValue || option.value || String(option);
+                    }
+                    return String(option);
+                });
+            }
+
+            // For radio buttons, try to get the group name and options
+            let radioGroup = null;
+            let radioOptions = [];
+            if (fieldType === 'radio') {
+                radioGroup = annotation.fieldName || annotation.alternativeText || `radio_group_${this.formFields.length}`;
+                // For radio buttons, options might be in buttonValue or similar
+                if (annotation.buttonValue) {
+                    radioOptions = [annotation.buttonValue];
+                } else if (annotation.exportValue) {
+                    radioOptions = [annotation.exportValue];
+                }
+            }
+
             return {
                 id: annotation.id || `field_${Date.now()}_${Math.random().toString(36).substr(2)}`,
                 name: annotation.fieldName || `field_${this.formFields.length + 1}`,
@@ -157,7 +192,9 @@ class PDFHandler {
                 page: pageNum,
                 rect: rect,
                 value: annotation.fieldValue || '',
-                options: annotation.options || [],
+                options: options,
+                radioGroup: radioGroup,
+                radioOptions: radioOptions,
                 required: annotation.required || false,
                 readonly: annotation.readonly || false,
                 multiline: annotation.multiline || false,
@@ -243,6 +280,15 @@ class PDFHandler {
         // Clear existing overlays
         overlay.innerHTML = '';
 
+        // Position overlay to match canvas
+        const canvasRect = this.canvas.getBoundingClientRect();
+        const viewerRect = this.canvas.parentElement.getBoundingClientRect();
+        
+        overlay.style.left = `${canvasRect.left - viewerRect.left}px`;
+        overlay.style.top = `${canvasRect.top - viewerRect.top}px`;
+        overlay.style.width = `${this.canvas.width}px`;
+        overlay.style.height = `${this.canvas.height}px`;
+
         // Get current page form fields
         const pageFields = this.formFields.filter(field => field.page === this.currentPage);
         
@@ -260,10 +306,15 @@ class PDFHandler {
     createFormFieldOverlay(field) {
         const div = document.createElement('div');
         div.className = 'form-field-overlay';
+        
+        // Calculate position accounting for PDF coordinate system (bottom-left origin)
+        const fieldHeight = (field.rect[3] - field.rect[1]) * this.scale;
+        const fieldWidth = (field.rect[2] - field.rect[0]) * this.scale;
+        
         div.style.left = `${field.rect[0] * this.scale}px`;
-        div.style.top = `${(this.canvas.height - field.rect[3] * this.scale)}px`;
-        div.style.width = `${(field.rect[2] - field.rect[0]) * this.scale}px`;
-        div.style.height = `${(field.rect[3] - field.rect[1]) * this.scale}px`;
+        div.style.top = `${this.canvas.height - (field.rect[3] * this.scale)}px`;
+        div.style.width = `${fieldWidth}px`;
+        div.style.height = `${fieldHeight}px`;
 
         const input = this.createFormInput(field);
         div.appendChild(input);

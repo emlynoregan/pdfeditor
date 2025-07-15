@@ -515,6 +515,27 @@ class UIManager {
         }
 
         fieldsList.innerHTML = formFields.map(field => this.createFormFieldItem(field)).join('');
+        
+        // Add event listeners for form field inputs
+        formFields.forEach(field => {
+            const input = document.getElementById(`field-${field.id}`);
+            if (input) {
+                // Handle different input types
+                if (field.type === 'checkbox') {
+                    input.addEventListener('change', (e) => {
+                        const value = e.target.checked ? 'Yes' : 'No';
+                        window.pdfHandler.updateFieldValue(field.id, value);
+                    });
+                } else {
+                    input.addEventListener('input', (e) => {
+                        window.pdfHandler.updateFieldValue(field.id, e.target.value);
+                    });
+                    input.addEventListener('change', (e) => {
+                        window.pdfHandler.updateFieldValue(field.id, e.target.value);
+                    });
+                }
+            }
+        });
     }
 
     /**
@@ -535,11 +556,27 @@ class UIManager {
             case 'checkbox':
                 inputHtml = `<input type="checkbox" class="form-field-input-panel" id="field-${field.id}" ${field.value === 'Yes' || field.value === true ? 'checked' : ''} ${field.readonly ? 'disabled' : ''}><label for="field-${field.id}">Check this box</label>`;
                 break;
+            case 'radio':
+                // For radio buttons, create a simple text input showing the current value
+                // with a note that it's a radio button group
+                const radioValue = field.radioOptions && field.radioOptions.length > 0 ? field.radioOptions[0] : field.value;
+                inputHtml = `
+                    <div class="radio-field-container">
+                        <input type="text" class="form-field-input-panel" id="field-${field.id}" value="${radioValue || ''}" ${field.readonly ? 'readonly' : ''} placeholder="Enter radio button value">
+                        <small class="field-note">Radio button group: ${field.radioGroup || field.name}</small>
+                    </div>
+                `;
+                break;
             case 'select':
-                const options = field.options.map(option => 
-                    `<option value="${option}" ${option === field.value ? 'selected' : ''}>${option}</option>`
-                ).join('');
-                inputHtml = `<select class="form-field-input-panel" id="field-${field.id}" ${field.readonly ? 'disabled' : ''}>${options}</select>`;
+                if (field.options && field.options.length > 0) {
+                    const options = field.options.map(option => 
+                        `<option value="${option}" ${option === field.value ? 'selected' : ''}>${option}</option>`
+                    ).join('');
+                    inputHtml = `<select class="form-field-input-panel" id="field-${field.id}" ${field.readonly ? 'disabled' : ''}>${options}</select>`;
+                } else {
+                    // Fallback to text input if no options
+                    inputHtml = `<input type="text" class="form-field-input-panel" id="field-${field.id}" value="${field.value || ''}" ${field.readonly ? 'readonly' : ''} placeholder="No options available">`;
+                }
                 break;
             default:
                 inputHtml = `<input type="text" class="form-field-input-panel" id="field-${field.id}" value="${field.value || ''}" ${field.readonly ? 'readonly' : ''}>`;
