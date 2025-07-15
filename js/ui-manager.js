@@ -90,6 +90,12 @@ class UIManager {
             helpBtn.addEventListener('click', () => this.showModal('help'));
         }
 
+        // Clear all fields button
+        const clearAllFieldsBtn = document.getElementById('clear-all-fields-btn');
+        if (clearAllFieldsBtn) {
+            clearAllFieldsBtn.addEventListener('click', () => this.handleClearAllFields());
+        }
+
         // Custom events
         window.addEventListener('fieldValueChanged', (e) => {
             this.handleFieldValueChanged(e.detail);
@@ -177,6 +183,9 @@ class UIManager {
                 } catch (error) {
                     console.error('Error processing file:', file.name, error);
                     errorCount++;
+                    
+                    // Show error message
+                    this.showNotification(`Failed to process "${file.name}": ${error.message}`, 'error');
                 }
             }
 
@@ -187,6 +196,7 @@ class UIManager {
             if (successCount > 0) {
                 this.showNotification(`Successfully uploaded ${successCount} PDF(s)`, 'success');
                 this.showPDFManagement();
+                await this.updateStorageUsage();
             }
 
             if (errorCount > 0) {
@@ -247,7 +257,7 @@ class UIManager {
 
         try {
             const storage = new StorageManager();
-            const pdfData = storage.getPDF(this.currentPDFId);
+            const pdfData = await storage.getPDF(this.currentPDFId);
             
             if (!pdfData) {
                 throw new Error('PDF not found');
@@ -404,7 +414,7 @@ class UIManager {
 
         try {
             const storage = new StorageManager();
-            const pdfData = storage.getPDF(pdfId);
+            const pdfData = await storage.getPDF(pdfId);
             
             if (!pdfData) {
                 throw new Error('PDF not found');
@@ -434,8 +444,8 @@ class UIManager {
             
             // Load saved form field values after everything is ready
             // Use nextTick to ensure DOM is fully updated
-            setTimeout(() => {
-                window.pdfHandler.loadFieldValuesFromStorage();
+            setTimeout(async () => {
+                await window.pdfHandler.loadFieldValuesFromStorage();
             }, 50);
 
         } catch (error) {
@@ -456,7 +466,7 @@ class UIManager {
 
         try {
             const storage = new StorageManager();
-            const pdfs = storage.getAllPDFs();
+            const pdfs = await storage.getAllPDFs();
 
             if (pdfs.length === 0) {
                 listContainer.innerHTML = '<p class="text-center">No PDF files uploaded yet.</p>';
@@ -464,6 +474,9 @@ class UIManager {
             }
 
             listContainer.innerHTML = pdfs.map(pdf => this.createPDFListItem(pdf)).join('');
+            
+            // Update storage usage indicator
+            await this.updateStorageUsage();
         } catch (error) {
             console.error('Error updating PDF list:', error);
             listContainer.innerHTML = '<p class="text-center">Error loading PDFs.</p>';
@@ -512,7 +525,7 @@ class UIManager {
      */
     async deletePDF(pdfId) {
         const storage = new StorageManager();
-        const pdf = storage.getPDF(pdfId);
+        const pdf = await storage.getPDF(pdfId);
         
         if (!pdf) return;
 
@@ -867,6 +880,75 @@ class UIManager {
         const element = document.getElementById(id);
         if (element) {
             element.style.display = 'block';
+        }
+    }
+
+    /**
+     * Handle clear all fields button
+     */
+    async handleClearAllFields() {
+        if (!window.pdfHandler || !window.pdfHandler.currentPDFId) {
+            this.showNotification('No PDF loaded', 'error');
+            return;
+        }
+
+        // Show confirmation dialog
+        const confirmed = await this.showConfirmationDialog(
+            'Clear All Fields',
+            'Are you sure you want to clear all form field values? This action cannot be undone.'
+        );
+
+        if (!confirmed) {
+            return;
+        }
+
+        try {
+            // Clear all form field values
+            await window.pdfHandler.clearAllFormFields();
+            
+            this.showNotification('All form field values cleared', 'success');
+        } catch (error) {
+            console.error('Error clearing form fields:', error);
+            this.showNotification('Failed to clear form fields: ' + error.message, 'error');
+        }
+    }
+
+    /**
+     * Show confirmation dialog
+     * @param {string} title - Dialog title
+     * @param {string} message - Dialog message
+     * @returns {Promise<boolean>} User's choice
+     */
+    showConfirmationDialog(title, message) {
+        return new Promise((resolve) => {
+            const confirmed = window.confirm(`${title}\n\n${message}`);
+            resolve(confirmed);
+        });
+    }
+
+    /**
+     * Update storage usage indicator
+     */
+    async updateStorageUsage() {
+        const storageText = document.getElementById('storage-text');
+        const storageFill = document.getElementById('storage-fill');
+        
+        if (!storageText || !storageFill) return;
+        
+        try {
+            const storage = new StorageManager();
+            const storageInfo = await storage.getStorageInfo();
+            
+            // Update text to show just total usage (no limits)
+            storageText.textContent = `${storageInfo.formattedSize} used (${storageInfo.totalFiles} files)`;
+            
+            // Hide progress bar since there's no limit to compare against
+            storageFill.style.width = '0%';
+            storageFill.classList.remove('warning', 'danger');
+            
+        } catch (error) {
+            console.error('Error updating storage usage:', error);
+            storageText.textContent = 'Error loading storage info';
         }
     }
 

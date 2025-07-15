@@ -720,14 +720,14 @@ class PDFHandler {
      * @param {string} fieldId - Field ID
      * @param {string} value - New value
      */
-    updateFieldValue(fieldId, value) {
+    async updateFieldValue(fieldId, value) {
         const field = this.formFields.find(f => f.id === fieldId);
         if (field) {
             field.value = value;
             
             // Save to localStorage if we have a PDF ID
             if (this.currentPDFId) {
-                this.saveFieldValuesToStorage();
+                await this.saveFieldValuesToStorage();
             }
             
             // Trigger custom event for UI updates
@@ -810,7 +810,7 @@ class PDFHandler {
     /**
      * Save form field values to localStorage
      */
-    saveFieldValuesToStorage() {
+    async saveFieldValuesToStorage() {
         if (!this.currentPDFId) {
             console.log('No currentPDFId set, skipping field value saving');
             return;
@@ -820,7 +820,7 @@ class PDFHandler {
             const storage = new StorageManager();
             const fieldValues = this.getFormFieldValues();
             console.log('Saving field values for PDF:', this.currentPDFId, fieldValues);
-            storage.saveFormFieldValues(this.currentPDFId, fieldValues);
+            await storage.saveFormFieldValues(this.currentPDFId, fieldValues);
         } catch (error) {
             console.error('Error saving field values to storage:', error);
         }
@@ -829,7 +829,7 @@ class PDFHandler {
     /**
      * Load form field values from localStorage
      */
-    loadFieldValuesFromStorage() {
+    async loadFieldValuesFromStorage() {
         if (!this.currentPDFId) {
             console.log('No currentPDFId set, skipping field value loading');
             return;
@@ -837,7 +837,7 @@ class PDFHandler {
         
         try {
             const storage = new StorageManager();
-            const fieldValues = storage.loadFormFieldValues(this.currentPDFId);
+            const fieldValues = await storage.loadFormFieldValues(this.currentPDFId);
             
             console.log('Loading field values for PDF:', this.currentPDFId);
             console.log('Found saved values:', fieldValues);
@@ -851,6 +851,75 @@ class PDFHandler {
             }
         } catch (error) {
             console.error('Error loading field values from storage:', error);
+        }
+    }
+
+    /**
+     * Clear all form field values
+     */
+    async clearAllFormFields() {
+        try {
+            // Clear all form field values
+            this.formFields.forEach(field => {
+                field.value = '';
+                
+                // Clear sidebar form fields
+                const sidebarInput = document.getElementById(`field-${field.id}`);
+                if (sidebarInput) {
+                    if (field.type === 'radio') {
+                        // Clear all radio buttons in the group
+                        const radioInputs = document.querySelectorAll(`input[name="radio-${field.id}"]`);
+                        radioInputs.forEach(radio => {
+                            radio.checked = false;
+                        });
+                    } else if (field.type === 'checkbox') {
+                        sidebarInput.checked = false;
+                    } else {
+                        sidebarInput.value = '';
+                    }
+                }
+                
+                // Clear overlay form fields
+                if (field.type === 'radio') {
+                    const overlayRadios = document.querySelectorAll(`input[name="${field.name}"]`);
+                    overlayRadios.forEach(radio => {
+                        radio.checked = false;
+                    });
+                } else {
+                    // Clear other overlay field types (text, select, etc.)
+                    const overlayFields = document.querySelectorAll(`[data-field-id="${field.id}"]`);
+                    overlayFields.forEach(overlayField => {
+                        if (overlayField.type === 'checkbox') {
+                            overlayField.checked = false;
+                        } else if (overlayField.tagName === 'SELECT') {
+                            overlayField.selectedIndex = 0;
+                        } else {
+                            overlayField.value = '';
+                        }
+                    });
+                }
+            });
+            
+            // Update form field overlays
+            this.updateFormFieldOverlays();
+            
+            // Clear from localStorage
+            if (this.currentPDFId) {
+                const storage = new StorageManager();
+                await storage.clearFormFieldValues(this.currentPDFId);
+            }
+            
+            // Dispatch events to update UI
+            this.formFields.forEach(field => {
+                window.dispatchEvent(new CustomEvent('fieldValueChanged', {
+                    detail: { fieldId: field.id, value: '', field }
+                }));
+            });
+            
+            console.log('All form field values cleared');
+        } catch (error) {
+            console.error('Error clearing form fields:', error);
+            throw error;
         }
     }
 

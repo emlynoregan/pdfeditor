@@ -467,4 +467,75 @@ body {
 
 .mt-4 {
     margin-top: 1rem;
+}
+
+/* Storage Usage Indicator */
+.storage-info {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.storage-usage {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.storage-label {
+    font-weight: 600;
+    color: #495057;
+    font-size: 14px;
+}
+
+.storage-text {
+    font-size: 13px;
+    color: #6c757d;
+    min-width: 120px;
+}
+
+.storage-bar {
+    flex: 1;
+    height: 8px;
+    background-color: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+    max-width: 200px;
+}
+
+.storage-fill {
+    height: 100%;
+    background-color: #28a745;
+    transition: width 0.3s ease, background-color 0.3s ease;
+    border-radius: 4px;
+}
+
+.storage-fill.warning {
+    background-color: #ffc107;
+}
+
+.storage-fill.danger {
+    background-color: #dc3545;
+}
+
+/* Dark mode styles */
+@media (prefers-color-scheme: dark) {
+    .storage-info {
+        background: #1f2937;
+        border-color: #374151;
+    }
+    
+    .storage-label {
+        color: #f9fafb;
+    }
+    
+    .storage-text {
+        color: #d1d5db;
+    }
+    
+    .storage-bar {
+        background-color: #374151;
+    }
 } 

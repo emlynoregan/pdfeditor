@@ -610,6 +610,23 @@ textarea.form-field-input-panel {
         color: #f9fafb;
         border-color: #374151;
     }
+
+    .form-panel-header h3 {
+        background: none;
+        color: #f9fafb;
+        border: none;
+    }
+
+    .btn-danger {
+        background-color: #dc2626;
+        border-color: #dc2626;
+        color: #f9fafb;
+    }
+
+    .btn-danger:hover {
+        background-color: #b91c1c;
+        border-color: #b91c1c;
+    }
     
     .form-field-item {
         background: #1f2937;
@@ -657,6 +674,36 @@ textarea.form-field-input-panel {
     padding-top: 10px;
     border-bottom: 1px solid #e9ecef;
     padding-bottom: 10px;
+}
+
+.form-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.form-panel-header h3 {
+    margin: 0;
+    border: none;
+    padding: 0;
+}
+
+.form-panel-header .btn {
+    margin-left: 10px;
+    font-size: 12px;
+    padding: 4px 8px;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    color: white;
+    border: 1px solid #dc3545;
+}
+
+.btn-danger:hover {
+    background-color: #c82333;
+    border-color: #bd2130;
 }
 
 .form-fields-tip {

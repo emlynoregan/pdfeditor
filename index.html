@@ -111,6 +111,15 @@
                         <button class="btn btn-danger" id="clear-all-btn">Clear All</button>
                     </div>
                 </div>
+                <div class="storage-info" id="storage-info">
+                    <div class="storage-usage">
+                        <span class="storage-label">Storage Usage:</span>
+                        <span class="storage-text" id="storage-text">Loading...</span>
+                        <div class="storage-bar">
+                            <div class="storage-fill" id="storage-fill"></div>
+                        </div>
+                    </div>
+                </div>
                 <div class="pdf-list" id="pdf-list">
                     <!-- PDF items will be dynamically inserted here -->
                 </div>
@@ -154,7 +163,12 @@
                     </div>
                     
                     <div class="form-panel" id="form-panel">
-                        <h3>Form Fields</h3>
+                        <div class="form-panel-header">
+                            <h3>Form Fields</h3>
+                            <button class="btn btn-sm btn-danger" id="clear-all-fields-btn" title="Clear all form field values">
+                                🗑️ Clear All
+                            </button>
+                        </div>
                         <div class="form-fields-tip">
                             <small>💡 <strong>Tip:</strong> Click on a selected radio button to clear the entire group</small>
                         </div>
