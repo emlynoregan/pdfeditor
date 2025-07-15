@@ -1,0 +1,13 @@
+PLACEHOLDER: favicon.png (32x32 pixels)
+
+This file should be replaced with a 32x32 pixel PNG image representing the PDF Editor.
+Suggested design: A simple document icon with a blue/PDF theme color.
+
+You can create this image using any image editor or online favicon generator.
+Recommended colors: Blue (#2563eb) and white for consistency with the app theme.
+
+The image should be:
+- 32x32 pixels
+- PNG format
+- Transparent background
+- Simple, clear design that works at small sizes 

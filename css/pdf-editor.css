@@ -1,0 +1,455 @@
+/* PDF Editor Specific Styles */
+
+/* Editor Layout */
+.pdf-editor {
+    background: white;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.editor-header {
+    background: #f8fafc;
+    border-bottom: 2px solid #e5e7eb;
+    padding: 1.5rem;
+}
+
+.editor-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.editor-title h2 {
+    color: #1f2937;
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+.editor-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.editor-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 2rem;
+}
+
+.zoom-controls, .page-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.zoom-controls span, .page-controls span {
+    font-weight: 500;
+    color: #4b5563;
+    min-width: 80px;
+    text-align: center;
+}
+
+/* Editor Content Layout */
+.editor-content {
+    display: flex;
+    min-height: 70vh;
+}
+
+.pdf-viewer {
+    flex: 1;
+    position: relative;
+    overflow: auto;
+    background: #f3f4f6;
+    border-right: 1px solid #e5e7eb;
+}
+
+.form-panel {
+    width: 350px;
+    background: white;
+    border-left: 1px solid #e5e7eb;
+    overflow-y: auto;
+}
+
+.form-panel h3 {
+    background: #f8fafc;
+    padding: 1rem 1.5rem;
+    margin: 0;
+    color: #1f2937;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 1rem;
+}
+
+.form-fields-list {
+    padding: 1.5rem;
+}
+
+.no-fields {
+    color: #6b7280;
+    text-align: center;
+    font-style: italic;
+    padding: 2rem;
+}
+
+/* PDF Canvas */
+#pdf-canvas {
+    display: block;
+    margin: 2rem auto;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-radius: 0.5rem;
+    background: white;
+}
+
+/* Form Overlay */
+.form-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+}
+
+.form-field-overlay {
+    position: absolute;
+    pointer-events: auto;
+    z-index: 10;
+}
+
+.form-field-input {
+    width: 100%;
+    height: 100%;
+    border: 2px solid #3b82f6;
+    background: rgba(59, 130, 246, 0.1);
+    border-radius: 0.25rem;
+    padding: 0.25rem;
+    font-size: 0.875rem;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.form-field-input:focus {
+    border-color: #1d4ed8;
+    background: rgba(59, 130, 246, 0.2);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-field-input.checkbox {
+    width: auto;
+    height: auto;
+    transform: scale(1.2);
+}
+
+/* Form Field List Item */
+.form-field-item {
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    transition: all 0.2s ease;
+}
+
+.form-field-item:hover {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.05);
+}
+
+.form-field-label {
+    display: block;
+    font-weight: 500;
+    color: #1f2937;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.form-field-input-panel {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.form-field-input-panel:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-field-input-panel[type="checkbox"] {
+    width: auto;
+    margin-right: 0.5rem;
+}
+
+.form-field-info {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-top: 0.25rem;
+}
+
+/* Field Type Specific Styles */
+.form-field-item.text-field {
+    border-left: 4px solid #3b82f6;
+}
+
+.form-field-item.checkbox-field {
+    border-left: 4px solid #10b981;
+}
+
+.form-field-item.radio-field {
+    border-left: 4px solid #f59e0b;
+}
+
+.form-field-item.signature-field {
+    border-left: 4px solid #8b5cf6;
+}
+
+/* Signature Field */
+.signature-field-container {
+    position: relative;
+}
+
+.signature-canvas {
+    border: 2px dashed #d1d5db;
+    border-radius: 0.375rem;
+    cursor: crosshair;
+    background: white;
+}
+
+.signature-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0.5rem;
+}
+
+.signature-clear {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.signature-clear:hover {
+    background: #dc2626;
+}
+
+/* PDF Viewer Controls */
+.pdf-viewer-controls {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    display: flex;
+    gap: 0.5rem;
+    z-index: 20;
+}
+
+.pdf-viewer-control {
+    padding: 0.25rem 0.5rem;
+    border: 1px solid #d1d5db;
+    background: white;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: all 0.2s ease;
+}
+
+.pdf-viewer-control:hover {
+    background: #f3f4f6;
+    border-color: #3b82f6;
+}
+
+.pdf-viewer-control.active {
+    background: #3b82f6;
+    color: white;
+    border-color: #3b82f6;
+}
+
+/* Progress Bar */
+.progress-bar {
+    height: 4px;
+    background: #e5e7eb;
+    border-radius: 2px;
+    overflow: hidden;
+    margin: 1rem 0;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6, #10b981);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+    width: 0%;
+}
+
+/* Form Field Validation */
+.form-field-item.invalid {
+    border-color: #ef4444;
+    background: rgba(239, 68, 68, 0.05);
+}
+
+.form-field-item.invalid .form-field-label {
+    color: #ef4444;
+}
+
+.form-field-error {
+    color: #ef4444;
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+    display: none;
+}
+
+.form-field-item.invalid .form-field-error {
+    display: block;
+}
+
+/* Responsive Design for Editor */
+@media (max-width: 1024px) {
+    .editor-content {
+        flex-direction: column;
+    }
+    
+    .form-panel {
+        width: 100%;
+        max-height: 400px;
+    }
+    
+    .pdf-viewer {
+        border-right: none;
+        border-bottom: 1px solid #e5e7eb;
+    }
+}
+
+@media (max-width: 768px) {
+    .editor-header {
+        padding: 1rem;
+    }
+    
+    .editor-title {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+    }
+    
+    .editor-actions {
+        justify-content: center;
+    }
+    
+    .editor-controls {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .zoom-controls, .page-controls {
+        justify-content: center;
+    }
+    
+    .pdf-viewer-controls {
+        position: static;
+        margin-bottom: 1rem;
+        justify-content: center;
+    }
+    
+    .form-fields-list {
+        padding: 1rem;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .editor-header,
+    .form-panel,
+    .pdf-viewer-controls,
+    .btn {
+        display: none !important;
+    }
+    
+    .editor-content {
+        display: block;
+    }
+    
+    .pdf-viewer {
+        border: none;
+        background: white;
+    }
+    
+    #pdf-canvas {
+        margin: 0;
+        box-shadow: none;
+    }
+}
+
+/* Accessibility */
+.form-field-input:focus,
+.form-field-input-panel:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
+.btn:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .form-field-input {
+        border-width: 3px;
+    }
+    
+    .form-field-item {
+        border-width: 2px;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Dark mode support (if needed) */
+@media (prefers-color-scheme: dark) {
+    .pdf-viewer {
+        background: #1f2937;
+    }
+    
+    .form-panel {
+        background: #111827;
+        border-color: #374151;
+    }
+    
+    .form-panel h3 {
+        background: #1f2937;
+        color: #f9fafb;
+        border-color: #374151;
+    }
+    
+    .form-field-item {
+        background: #1f2937;
+        border-color: #374151;
+    }
+    
+    .form-field-label {
+        color: #f9fafb;
+    }
+    
+    .form-field-input-panel {
+        background: #374151;
+        border-color: #4b5563;
+        color: #f9fafb;
+    }
+} 

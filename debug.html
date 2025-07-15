@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PDF Editor Debug</title>
+</head>
+<body>
+    <h1>PDF Editor Dependency Test</h1>
+    <div id="results"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+
+    <script>
+        setTimeout(() => {
+            const results = document.getElementById('results');
+            const pdfjsStatus = window.pdfjsLib ? '✅ Loaded' : '❌ Missing';
+            const pdflibStatus = window.PDFLib ? '✅ Loaded' : '❌ Missing';
+            
+            results.innerHTML = `
+                <p>pdfjsLib: ${pdfjsStatus}</p>
+                <p>PDFLib: ${pdflibStatus}</p>
+                <p>If both show "✅ Loaded", the main app should work.</p>
+            `;
+        }, 2000);
+    </script>
+</body>
+</html> 

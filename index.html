@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-touch-fullscreen" content="yes">
+    <meta name="theme-color" content="#2563eb">
+    
+    <!-- Fullscreen web app meta tags -->
+    <meta name="msapplication-tap-highlight" content="no">
+    <meta name="format-detection" content="telephone=no">
+    
+    <title>📄 PDF Editor - Edit & Fill PDF Forms</title>
+    <meta name="description" content="Free online PDF editor - Upload, edit, fill forms, and download PDFs directly in your browser. No server uploads, completely client-side processing.">
+    
+    <!-- Favicon Configuration -->
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/images/favicon.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/images/favicon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/images/favicon.png">
+    <link rel="shortcut icon" href="assets/images/favicon.png">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="">
+    <meta property="og:title" content="📄 PDF Editor - Edit & Fill PDF Forms">
+    <meta property="og:description" content="Free online PDF editor - Upload, edit, fill forms, and download PDFs directly in your browser. No server uploads, completely client-side processing.">
+    <meta property="og:image" content="assets/images/oembed.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:site_name" content="PDF Editor">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="">
+    <meta property="twitter:title" content="📄 PDF Editor - Edit & Fill PDF Forms">
+    <meta property="twitter:description" content="Free online PDF editor - Upload, edit, fill forms, and download PDFs directly in your browser. No server uploads, completely client-side processing.">
+    <meta property="twitter:image" content="assets/images/oembed.png">
+    
+    <!-- Additional Meta Tags -->
+    <meta name="author" content="Emlyn O'Regan">
+    <meta name="keywords" content="PDF editor, form filler, PDF forms, online PDF, client-side PDF, fill PDF, edit PDF, browser PDF">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- PDF.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+    
+    <!-- PDF-lib for PDF modification -->
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/pdf-editor.css">
+    
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('sw.js').then(function(registration) {
+                    console.log('SW registered: ', registration);
+                }).catch(function(registrationError) {
+                    console.log('SW registration failed: ', registrationError);
+                });
+            });
+        }
+    </script>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <h1 class="logo">
+                <span class="logo-icon">📄</span>
+                PDF Editor
+            </h1>
+            <nav class="nav">
+                <button class="nav-button" id="about-btn">About</button>
+                <button class="nav-button" id="help-btn">Help</button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            <!-- Upload Section -->
+            <section class="upload-section" id="upload-section">
+                <div class="upload-area">
+                    <div class="upload-icon">📄</div>
+                    <h2>Upload PDF Files</h2>
+                    <p>Select PDF files to upload and edit. Files are stored locally in your browser.</p>
+                    <input type="file" id="pdf-file-input" accept=".pdf" multiple style="display: none;">
+                    <button class="btn btn-primary" id="upload-btn">Choose PDF Files</button>
+                    <div class="upload-info">
+                        <small>✓ Files stay on your device - no server upload</small>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PDF Management Section -->
+            <section class="pdf-management" id="pdf-management" style="display: none;">
+                <div class="section-header">
+                    <h2>Your PDF Files</h2>
+                    <div class="section-actions">
+                        <button class="btn btn-secondary" id="add-more-btn">Add More Files</button>
+                        <button class="btn btn-danger" id="clear-all-btn">Clear All</button>
+                    </div>
+                </div>
+                <div class="pdf-list" id="pdf-list">
+                    <!-- PDF items will be dynamically inserted here -->
+                </div>
+            </section>
+
+            <!-- PDF Editor Section -->
+            <section class="pdf-editor" id="pdf-editor" style="display: none;">
+                <div class="editor-header">
+                    <div class="editor-title">
+                        <h2 id="current-pdf-name">Document Name</h2>
+                        <div class="editor-actions">
+                            <button class="btn btn-secondary" id="back-to-list-btn">← Back to List</button>
+                            <button class="btn btn-success" id="download-btn">Download PDF</button>
+                        </div>
+                    </div>
+                    <div class="editor-controls">
+                        <div class="zoom-controls">
+                            <button class="btn btn-sm" id="zoom-out-btn">-</button>
+                            <span id="zoom-level">100%</span>
+                            <button class="btn btn-sm" id="zoom-in-btn">+</button>
+                        </div>
+                        <div class="page-controls">
+                            <button class="btn btn-sm" id="prev-page-btn">← Prev</button>
+                            <span id="page-info">Page 1 of 1</span>
+                            <button class="btn btn-sm" id="next-page-btn">Next →</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="editor-content">
+                    <div class="pdf-viewer">
+                        <canvas id="pdf-canvas"></canvas>
+                        <div class="form-overlay" id="form-overlay">
+                            <!-- Form fields will be dynamically positioned here -->
+                        </div>
+                    </div>
+                    
+                    <div class="form-panel" id="form-panel">
+                        <h3>Form Fields</h3>
+                        <div class="form-fields-list" id="form-fields-list">
+                            <p class="no-fields">No form fields detected in this PDF.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- About Modal -->
+    <div class="modal" id="about-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>About PDF Editor</h3>
+                <button class="close-btn" id="close-about">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>This is a free, client-side PDF editor that allows you to:</p>
+                <ul>
+                    <li>Upload and manage PDF files locally</li>
+                    <li>Fill out PDF forms and text fields</li>
+                    <li>Download completed PDFs</li>
+                    <li>All processing happens in your browser - no data sent to servers</li>
+                </ul>
+                <p>Built with PDF.js and PDF-lib for reliable PDF handling.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div class="modal" id="help-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>How to Use</h3>
+                <button class="close-btn" id="close-help">&times;</button>
+            </div>
+            <div class="modal-body">
+                <h4>Getting Started:</h4>
+                <ol>
+                    <li>Click "Choose PDF Files" to upload one or more PDFs</li>
+                    <li>Select a PDF from your list to open it in the editor</li>
+                    <li>Fill out any form fields in the right panel</li>
+                    <li>Click "Download PDF" to save your changes</li>
+                </ol>
+                <h4>Managing Files:</h4>
+                <ul>
+                    <li>Files are stored locally in your browser</li>
+                    <li>Use "Clear All" to remove all files and free up space</li>
+                    <li>Delete individual files using the trash icon</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="loading-spinner"></div>
+        <p>Processing PDF...</p>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/storage.js"></script>
+    <script src="js/pdf-handler.js"></script>
+    <script src="js/ui-manager.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html> 
