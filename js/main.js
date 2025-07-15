@@ -42,12 +42,6 @@ function initializeApp() {
 
         console.log('✅ PDF Editor initialized successfully');
         
-        // Ensure loading overlay is hidden
-        const loadingOverlay = document.getElementById('loading-overlay');
-        if (loadingOverlay) {
-            loadingOverlay.classList.add('hidden');
-        }
-        
         // Show welcome message if first time
         if (isFirstTime()) {
             showWelcomeMessage();
