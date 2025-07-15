@@ -66,8 +66,9 @@ class PDFHandler {
      */
     async loadPDFFromArrayBuffer(arrayBuffer) {
         try {
-            this.pdfBytes = arrayBuffer;
+            // Create a copy of the ArrayBuffer as Uint8Array to avoid detachment issues
             const uint8Array = new Uint8Array(arrayBuffer);
+            this.pdfBytes = new Uint8Array(uint8Array); // Store a copy to avoid detachment
             
             // Load with PDF.js for rendering
             this.pdfDocument = await pdfjsLib.getDocument({
@@ -108,6 +109,7 @@ class PDFHandler {
                 bytes[i] = binaryString.charCodeAt(i);
             }
             
+            // Use the ArrayBuffer conversion method
             return await this.loadPDFFromArrayBuffer(bytes.buffer);
         } catch (error) {
             console.error('Error loading PDF from base64:', error);
@@ -122,6 +124,7 @@ class PDFHandler {
     async extractFormFields() {
         try {
             this.formFields = [];
+            const radioGroups = new Map(); // Track radio button groups
             
             // Get form fields from all pages
             for (let pageNum = 1; pageNum <= this.totalPages; pageNum++) {
@@ -132,11 +135,44 @@ class PDFHandler {
                     if (annotation.subtype === 'Widget') {
                         const field = this.processFormField(annotation, pageNum);
                         if (field) {
+                            // Handle radio button grouping
+                            if (field.type === 'radio') {
+                                const groupName = field.radioGroup || field.name;
+                                if (!radioGroups.has(groupName)) {
+                                    radioGroups.set(groupName, {
+                                        name: groupName,
+                                        type: 'radio',
+                                        page: field.page,
+                                        options: [],
+                                        value: '',
+                                        id: field.id
+                                    });
+                                }
+                                
+                                // Add radio option to group
+                                const group = radioGroups.get(groupName);
+                                if (field.radioOptions && field.radioOptions.length > 0) {
+                                    field.radioOptions.forEach(option => {
+                                        if (!group.options.includes(option)) {
+                                            group.options.push(option);
+                                        }
+                                    });
+                                }
+                                
+                                // Don't add individual radio buttons to formFields
+                                return;
+                            }
+                            
                             this.formFields.push(field);
                         }
                     }
                 });
             }
+            
+            // Add grouped radio buttons to formFields
+            radioGroups.forEach(group => {
+                this.formFields.push(group);
+            });
 
             return this.formFields;
         } catch (error) {
@@ -437,6 +473,7 @@ class PDFHandler {
     async generateFilledPDF() {
         try {
             // Load PDF with PDF-lib for modification
+            // pdfBytes is now a Uint8Array, which PDFLib can handle directly
             const pdfDoc = await PDFLib.PDFDocument.load(this.pdfBytes);
             const form = pdfDoc.getForm();
             const fields = form.getFields();
@@ -446,32 +483,36 @@ class PDFHandler {
                 if (field.value) {
                     try {
                         const pdfField = fields.find(f => f.getName() === field.name);
+                        
                         if (pdfField) {
-                            switch (field.type) {
-                                case 'text':
-                                    if (pdfField.constructor.name === 'PDFTextField') {
-                                        pdfField.setText(field.value);
+                            const fieldType = pdfField.constructor.name;
+                            
+                            // Check the actual constructor name for proper type detection
+                            if (fieldType.includes('TextField') || fieldType.includes('Text')) {
+                                pdfField.setText(field.value);
+                            } else if (fieldType.includes('CheckBox') || fieldType.includes('Button')) {
+                                if (field.value === 'Yes' || field.value === true) {
+                                    pdfField.check();
+                                } else {
+                                    pdfField.uncheck();
+                                }
+                            } else if (fieldType.includes('RadioGroup') || fieldType.includes('Radio')) {
+                                pdfField.select(field.value);
+                            } else if (fieldType.includes('Dropdown') || fieldType.includes('Choice')) {
+                                pdfField.select(field.value);
+                            } else {
+                                // Try to determine field type by available methods
+                                if (typeof pdfField.setText === 'function') {
+                                    pdfField.setText(field.value);
+                                } else if (typeof pdfField.select === 'function') {
+                                    pdfField.select(field.value);
+                                } else if (typeof pdfField.check === 'function') {
+                                    if (field.value === 'Yes' || field.value === true) {
+                                        pdfField.check();
+                                    } else {
+                                        pdfField.uncheck();
                                     }
-                                    break;
-                                case 'checkbox':
-                                    if (pdfField.constructor.name === 'PDFCheckBox') {
-                                        if (field.value === 'Yes' || field.value === true) {
-                                            pdfField.check();
-                                        } else {
-                                            pdfField.uncheck();
-                                        }
-                                    }
-                                    break;
-                                case 'radio':
-                                    if (pdfField.constructor.name === 'PDFRadioGroup') {
-                                        pdfField.select(field.value);
-                                    }
-                                    break;
-                                case 'select':
-                                    if (pdfField.constructor.name === 'PDFDropdown') {
-                                        pdfField.select(field.value);
-                                    }
-                                    break;
+                                }
                             }
                         }
                     } catch (error) {

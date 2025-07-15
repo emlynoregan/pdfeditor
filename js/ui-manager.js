@@ -253,11 +253,13 @@ class UIManager {
                 throw new Error('PDF not found');
             }
 
-            const pdfHandler = new PDFHandler();
-            await pdfHandler.loadPDFFromBase64(pdfData.data);
+            // Use the existing PDFHandler instance that has the form field values
+            if (!window.pdfHandler) {
+                throw new Error('PDF handler not initialized');
+            }
             
-            // Generate filled PDF
-            const filledPdfBytes = await pdfHandler.generateFilledPDF();
+            // Generate filled PDF using the current PDFHandler instance
+            const filledPdfBytes = await window.pdfHandler.generateFilledPDF();
             
             // Download the PDF
             const blob = new Blob([filledPdfBytes], { type: 'application/pdf' });
@@ -518,21 +520,38 @@ class UIManager {
         
         // Add event listeners for form field inputs
         formFields.forEach(field => {
-            const input = document.getElementById(`field-${field.id}`);
-            if (input) {
-                // Handle different input types
-                if (field.type === 'checkbox') {
-                    input.addEventListener('change', (e) => {
-                        const value = e.target.checked ? 'Yes' : 'No';
-                        window.pdfHandler.updateFieldValue(field.id, value);
+            if (field.type === 'radio') {
+                // Handle radio button groups
+                const radioInputs = document.querySelectorAll(`input[name="radio-${field.id}"]`);
+                radioInputs.forEach(radio => {
+                    radio.addEventListener('change', (e) => {
+                        if (e.target.checked) {
+                            window.pdfHandler.updateFieldValue(field.id, e.target.value);
+                        }
                     });
-                } else {
-                    input.addEventListener('input', (e) => {
-                        window.pdfHandler.updateFieldValue(field.id, e.target.value);
-                    });
-                    input.addEventListener('change', (e) => {
-                        window.pdfHandler.updateFieldValue(field.id, e.target.value);
-                    });
+                });
+            } else {
+                const input = document.getElementById(`field-${field.id}`);
+                if (input) {
+                    // Handle different input types
+                    if (field.type === 'checkbox') {
+                        input.addEventListener('change', (e) => {
+                            const value = e.target.checked ? 'Yes' : 'No';
+                            window.pdfHandler.updateFieldValue(field.id, value);
+                        });
+                    } else if (field.type === 'select') {
+                        // Special handling for select elements
+                        input.addEventListener('change', (e) => {
+                            window.pdfHandler.updateFieldValue(field.id, e.target.value);
+                        });
+                    } else {
+                        input.addEventListener('input', (e) => {
+                            window.pdfHandler.updateFieldValue(field.id, e.target.value);
+                        });
+                        input.addEventListener('change', (e) => {
+                            window.pdfHandler.updateFieldValue(field.id, e.target.value);
+                        });
+                    }
                 }
             }
         });
@@ -557,21 +576,41 @@ class UIManager {
                 inputHtml = `<input type="checkbox" class="form-field-input-panel" id="field-${field.id}" ${field.value === 'Yes' || field.value === true ? 'checked' : ''} ${field.readonly ? 'disabled' : ''}><label for="field-${field.id}">Check this box</label>`;
                 break;
             case 'radio':
-                // For radio buttons, create a simple text input showing the current value
-                // with a note that it's a radio button group
-                const radioValue = field.radioOptions && field.radioOptions.length > 0 ? field.radioOptions[0] : field.value;
-                inputHtml = `
-                    <div class="radio-field-container">
-                        <input type="text" class="form-field-input-panel" id="field-${field.id}" value="${radioValue || ''}" ${field.readonly ? 'readonly' : ''} placeholder="Enter radio button value">
-                        <small class="field-note">Radio button group: ${field.radioGroup || field.name}</small>
-                    </div>
-                `;
+                // For radio buttons, create actual radio button options
+                if (field.options && field.options.length > 0) {
+                    const radioOptions = field.options.map((option, index) => 
+                        `<label class="radio-option">
+                            <input type="radio" name="radio-${field.id}" value="${option}" ${option === field.value ? 'checked' : ''}>
+                            <span>${option}</span>
+                        </label>`
+                    ).join('');
+                    
+                    inputHtml = `
+                        <div class="radio-field-container">
+                            <div class="radio-options">
+                                ${radioOptions}
+                            </div>
+                            <small class="field-note">Radio button group: ${field.name}</small>
+                        </div>
+                    `;
+                } else {
+                    // Fallback for radio buttons without options
+                    inputHtml = `
+                        <div class="radio-field-container">
+                            <input type="text" class="form-field-input-panel" id="field-${field.id}" value="${field.value || ''}" ${field.readonly ? 'readonly' : ''} placeholder="Enter radio button value">
+                            <small class="field-note">Radio button group: ${field.name}</small>
+                        </div>
+                    `;
+                }
                 break;
             case 'select':
                 if (field.options && field.options.length > 0) {
-                    const options = field.options.map(option => 
-                        `<option value="${option}" ${option === field.value ? 'selected' : ''}>${option}</option>`
-                    ).join('');
+                    const options = [
+                        '<option value="">Select an option...</option>',
+                        ...field.options.map(option => 
+                            `<option value="${option}" ${option === field.value ? 'selected' : ''}>${option}</option>`
+                        )
+                    ].join('');
                     inputHtml = `<select class="form-field-input-panel" id="field-${field.id}" ${field.readonly ? 'disabled' : ''}>${options}</select>`;
                 } else {
                     // Fallback to text input if no options
