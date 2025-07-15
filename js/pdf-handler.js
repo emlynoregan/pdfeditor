@@ -315,23 +315,23 @@ class PDFHandler {
                 }
             }
             
-            // Debug logging to help understand field properties
-            console.log(`🔍 "${fieldName}" → "${displayName}" (${fieldType})`);
+            // Debug logging (disabled for production)
+            // console.log(`🔍 "${fieldName}" → "${displayName}" (${fieldType})`);
             
             // Log only interesting properties
-            const interestingProps = [];
-            if (alternativeText) interestingProps.push(`alt: "${alternativeText}"`);
-            if (annotation.actions) interestingProps.push(`actions: ${Object.keys(annotation.actions)}`);
-            if (annotation.defaultFieldValue) interestingProps.push(`default: "${annotation.defaultFieldValue}"`);
-            if (annotation.options && annotation.options.length > 0) interestingProps.push(`options: [${annotation.options.join(', ')}]`);
-            if (annotation.buttonValue) interestingProps.push(`buttonValue: "${annotation.buttonValue}"`);
-            if (annotation.contentsObj && annotation.contentsObj.str) interestingProps.push(`contents: "${annotation.contentsObj.str}"`);
+            // const interestingProps = [];
+            // if (alternativeText) interestingProps.push(`alt: "${alternativeText}"`);
+            // if (annotation.actions) interestingProps.push(`actions: ${Object.keys(annotation.actions)}`);
+            // if (annotation.defaultFieldValue) interestingProps.push(`default: "${annotation.defaultFieldValue}"`);
+            // if (annotation.options && annotation.options.length > 0) interestingProps.push(`options: [${annotation.options.join(', ')}]`);
+            // if (annotation.buttonValue) interestingProps.push(`buttonValue: "${annotation.buttonValue}"`);
+            // if (annotation.contentsObj && annotation.contentsObj.str) interestingProps.push(`contents: "${annotation.contentsObj.str}"`);
             
-            if (interestingProps.length > 0) {
-                console.log(`   ${interestingProps.join(' • ')}`);
-            }
-            console.log(`   Position: [${Math.round(rect[0])}, ${Math.round(rect[1])}, ${Math.round(rect[2])}, ${Math.round(rect[3])}]`);
-            console.log(`   ─────────────────────────────────────────────────────────────────`);
+            // if (interestingProps.length > 0) {
+            //     console.log(`   ${interestingProps.join(' • ')}`);
+            // }
+            // console.log(`   Position: [${Math.round(rect[0])}, ${Math.round(rect[1])}, ${Math.round(rect[2])}, ${Math.round(rect[3])}]`);
+            // console.log(`   ─────────────────────────────────────────────────────────────────`);
 
             return {
                 id: annotation.id || `field_${Date.now()}_${Math.random().toString(36).substr(2)}`,
@@ -436,7 +436,7 @@ class PDFHandler {
         // Clear existing overlays
         overlay.innerHTML = '';
 
-        // Position overlay to match canvas
+        // Position overlay to match canvas exactly
         const canvasRect = this.canvas.getBoundingClientRect();
         const viewerRect = this.canvas.parentElement.getBoundingClientRect();
         
@@ -444,11 +444,23 @@ class PDFHandler {
         overlay.style.top = `${canvasRect.top - viewerRect.top}px`;
         overlay.style.width = `${this.canvas.width}px`;
         overlay.style.height = `${this.canvas.height}px`;
+        
+        // Debug overlay positioning
+        console.log('Canvas rect:', canvasRect);
+        console.log('Viewer rect:', viewerRect);
+        console.log('Overlay position:', {
+            left: `${canvasRect.left - viewerRect.left}px`,
+            top: `${canvasRect.top - viewerRect.top}px`,
+            width: `${this.canvas.width}px`,
+            height: `${this.canvas.height}px`
+        });
 
         // Get current page form fields (excluding radio groups which are handled in the panel)
         const pageFields = this.formFields.filter(field => 
             field.page === this.currentPage && field.type !== 'radio'
         );
+        
+        console.log(`Creating overlays for ${pageFields.length} fields on page ${this.currentPage}`);
         
         pageFields.forEach(field => {
             const fieldElement = this.createFormFieldOverlay(field);
@@ -474,18 +486,31 @@ class PDFHandler {
             div.style.width = '100px';
             div.style.height = '20px';
         } else {
-            // Calculate position accounting for PDF coordinate system (bottom-left origin)
+            // Calculate position accounting for PDF coordinate system
             const fieldHeight = (field.rect[3] - field.rect[1]) * this.scale;
             const fieldWidth = (field.rect[2] - field.rect[0]) * this.scale;
             
-            div.style.left = `${field.rect[0] * this.scale}px`;
-            div.style.top = `${this.canvas.height - (field.rect[3] * this.scale)}px`;
+            // PDF coordinate system is bottom-left origin, HTML is top-left
+            // Need to flip Y coordinate
+            const x = field.rect[0] * this.scale;
+            const y = this.canvas.height - (field.rect[3] * this.scale);
+            
+            div.style.left = `${x}px`;
+            div.style.top = `${y}px`;
             div.style.width = `${fieldWidth}px`;
             div.style.height = `${fieldHeight}px`;
+            
+            // Debug positioning
+            console.log(`Field ${field.name}: rect=[${field.rect.join(', ')}], canvas height=${this.canvas.height}, pos=(${x}, ${y}), size=(${fieldWidth}, ${fieldHeight})`);
         }
 
         const input = this.createFormInput(field);
         div.appendChild(input);
+
+        // Add filled class if field has a value
+        if (field.value && field.value.toString().trim() !== '') {
+            div.classList.add('filled');
+        }
 
         return div;
     }
@@ -551,6 +576,21 @@ class PDFHandler {
             this.updateFieldValue(field.id, e.target.value);
         });
 
+        // Add focus and blur events to highlight the field
+        input.addEventListener('focus', (e) => {
+            const overlay = e.target.closest('.form-field-overlay');
+            if (overlay) {
+                overlay.classList.add('active');
+            }
+        });
+
+        input.addEventListener('blur', (e) => {
+            const overlay = e.target.closest('.form-field-overlay');
+            if (overlay) {
+                overlay.classList.remove('active');
+            }
+        });
+
         return input;
     }
 
@@ -596,6 +636,16 @@ class PDFHandler {
         
         // Update UI
         this.updateFormFieldOverlays();
+        
+        // Dispatch events for each field to update all UI elements
+        Object.keys(values).forEach(fieldId => {
+            const field = this.formFields.find(f => f.id === fieldId);
+            if (field) {
+                window.dispatchEvent(new CustomEvent('fieldValueChanged', {
+                    detail: { fieldId, value: values[fieldId], field }
+                }));
+            }
+        });
     }
 
     /**

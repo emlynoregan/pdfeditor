@@ -318,7 +318,7 @@ class UIManager {
      * @param {Object} detail - Field change details
      */
     handleFieldValueChanged(detail) {
-        // Only update the specific field that changed, not the entire panel
+        // Update the sidebar form field input
         const fieldInput = document.getElementById(`field-${detail.fieldId}`);
         if (fieldInput) {
             // Update the value without losing focus
@@ -331,6 +331,32 @@ class UIManager {
                 // and the field is not currently focused to avoid interrupting typing
                 if (fieldInput.value !== detail.value && document.activeElement !== fieldInput) {
                     fieldInput.value = detail.value;
+                }
+            }
+        }
+        
+        // Update the PDF overlay input
+        const overlayInput = document.querySelector(`#form-overlay [data-field-id="${detail.fieldId}"]`);
+        if (overlayInput) {
+            if (overlayInput.type === 'checkbox') {
+                overlayInput.checked = detail.value === 'Yes' || detail.value === true;
+            } else if (overlayInput.tagName === 'SELECT') {
+                overlayInput.value = detail.value;
+            } else {
+                // For text inputs and textareas, only update if the value is different
+                // and the field is not currently focused to avoid interrupting typing
+                if (overlayInput.value !== detail.value && document.activeElement !== overlayInput) {
+                    overlayInput.value = detail.value;
+                }
+            }
+            
+            // Update the filled state of the overlay
+            const overlay = overlayInput.closest('.form-field-overlay');
+            if (overlay) {
+                if (detail.value && detail.value.toString().trim() !== '') {
+                    overlay.classList.add('filled');
+                } else {
+                    overlay.classList.remove('filled');
                 }
             }
         }
