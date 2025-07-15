@@ -2,6 +2,8 @@
 
 A free, client-side PDF editor that allows users to upload, edit, fill forms, and download PDFs directly in their browser. No server uploads required - all processing happens locally on your device.
 
+> **💖 Built with Love**: This PDF editor was created by Emlyn O'Regan for Jodie O'Regan, demonstrating the power of modern web technologies for secure, client-side document processing.
+
 > **✅ Latest Update**: All major functionality has been implemented and tested. The app now supports complete PDF upload, editing, form filling, and persistent storage workflow with robust error handling.
 
 ## ✨ Features
