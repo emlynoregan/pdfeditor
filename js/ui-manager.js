@@ -565,15 +565,51 @@ class UIManager {
                 // Handle radio button groups
                 const radioInputs = document.querySelectorAll(`input[name="radio-${field.id}"]`);
                 radioInputs.forEach(radio => {
-                    radio.addEventListener('change', (e) => {
-                        if (e.target.checked) {
+                    radio.addEventListener('click', (e) => {
+                        // Check if this radio button was already selected BEFORE the click
+                        const currentGroupValue = window.pdfHandler.formFields.find(f => f.id === field.id)?.value;
+                        const wasSelected = currentGroupValue === e.target.value;
+                        
+                        if (wasSelected) {
+                            // Prevent default radio button behavior
+                            e.preventDefault();
+                            
+                            // Clear the entire radio group
+                            e.target.checked = false;
+                            window.pdfHandler.updateFieldValue(field.id, '');
+                            
+                            // Clear all sidebar radio buttons in this group
+                            const sidebarRadios = document.querySelectorAll(`input[name="radio-${field.id}"]`);
+                            sidebarRadios.forEach(sidebarRadio => {
+                                sidebarRadio.checked = false;
+                            });
+                            
+                            // Clear overlay radio buttons
+                            const overlayRadios = document.querySelectorAll(`input[name="${field.name}"]`);
+                            overlayRadios.forEach(overlayRadio => {
+                                overlayRadio.checked = false;
+                            });
+                            
+                            // Update overlays
+                            window.pdfHandler.updateFormFieldOverlays();
+                        } else {
+                            // Select this radio button (normal behavior)
                             window.pdfHandler.updateFieldValue(field.id, e.target.value);
+                            
+                            // Update all sidebar radio buttons in this group
+                            const sidebarRadios = document.querySelectorAll(`input[name="radio-${field.id}"]`);
+                            sidebarRadios.forEach(sidebarRadio => {
+                                sidebarRadio.checked = sidebarRadio.value === e.target.value;
+                            });
                             
                             // Update overlay radio buttons
                             const overlayRadios = document.querySelectorAll(`input[name="${field.name}"]`);
                             overlayRadios.forEach(overlayRadio => {
                                 overlayRadio.checked = overlayRadio.value === e.target.value;
                             });
+                            
+                            // Update overlays
+                            window.pdfHandler.updateFormFieldOverlays();
                         }
                     });
                 });

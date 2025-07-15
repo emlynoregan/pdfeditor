@@ -66,24 +66,42 @@
     border-right: 1px solid #e5e7eb;
 }
 
+/* Form Fields Panel */
 .form-panel {
     width: 350px;
-    background: white;
-    border-left: 1px solid #e5e7eb;
+    background: #f8f9fa;
+    border-left: 1px solid #e9ecef;
+    padding: 20px;
     overflow-y: auto;
+    max-height: 600px;
 }
 
 .form-panel h3 {
-    background: #f8fafc;
-    padding: 1rem 1.5rem;
-    margin: 0;
-    color: #1f2937;
-    border-bottom: 1px solid #e5e7eb;
-    font-size: 1rem;
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #495057;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.form-fields-tip {
+    background: #e3f2fd;
+    border: 1px solid #bbdefb;
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin-bottom: 15px;
+    color: #1565c0;
+}
+
+.form-fields-tip small {
+    display: block;
+    line-height: 1.4;
 }
 
 .form-fields-list {
-    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
 }
 
 .no-fields {

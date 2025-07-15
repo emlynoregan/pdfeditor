@@ -139,8 +139,12 @@ class PDFHandler {
                             // Handle radio button grouping
                             if (field.type === 'radio') {
                                 const groupName = field.radioGroup || field.name;
+                                let group;
+                                
                                 if (!radioGroups.has(groupName)) {
-                                    radioGroups.set(groupName, {
+                                    // Create new group with unique ID based on group name
+                                    const groupId = `radio_group_${groupName}_${radioGroups.size}`;
+                                    group = {
                                         name: groupName,
                                         displayName: field.displayName || field.name,
                                         type: 'radio',
@@ -148,15 +152,15 @@ class PDFHandler {
                                         rect: field.rect, // Include rect from first radio button
                                         options: [],
                                         value: '',
-                                        id: field.id,
+                                        id: groupId,
                                         tooltip: field.tooltip,
                                         mappingName: field.mappingName,
                                         fullyQualifiedName: field.fullyQualifiedName
-                                    });
+                                    };
+                                    radioGroups.set(groupName, group);
+                                } else {
+                                    group = radioGroups.get(groupName);
                                 }
-                                
-                                // Add radio option to group
-                                const group = radioGroups.get(groupName);
                                 
                                 // Update group display name if current field has a better one
                                 if (field.displayName && field.displayName !== field.name && 
@@ -176,7 +180,7 @@ class PDFHandler {
                                 const individualRadio = {
                                     ...field,
                                     id: `${field.id}_individual_${individualRadioButtons.length}`,
-                                    groupId: field.id,
+                                    groupId: group.id, // Use the group's ID, not the individual field's ID
                                     groupName: groupName,
                                     isIndividualRadio: true,
                                     originalFieldName: field.name // Store original field name for PDF matching
@@ -208,6 +212,21 @@ class PDFHandler {
 
             // Store individual radio buttons for overlay system
             this.individualRadioButtons = individualRadioButtons;
+            
+            console.log('Radio groups created:', Array.from(radioGroups.values()).map(g => ({
+                id: g.id,
+                name: g.name,
+                displayName: g.displayName,
+                options: g.options
+            })));
+            
+            console.log('Individual radio buttons:', individualRadioButtons.map(r => ({
+                id: r.id,
+                name: r.name,
+                groupId: r.groupId,
+                groupName: r.groupName,
+                value: r.radioOptions?.[0] || r.name
+            })));
 
             return this.formFields;
         } catch (error) {
@@ -549,9 +568,13 @@ class PDFHandler {
             const isSelected = groupField && groupField.value === (field.radioOptions && field.radioOptions.length > 0 ? field.radioOptions[0] : field.name);
             if (isSelected) {
                 div.classList.add('filled');
+            } else {
+                div.classList.remove('filled');
             }
         } else if (field.value && field.value.toString().trim() !== '') {
             div.classList.add('filled');
+        } else {
+            div.classList.remove('filled');
         }
 
         return div;
@@ -626,13 +649,60 @@ class PDFHandler {
         // Add event listeners
         if (field.isIndividualRadio) {
             // Special handling for individual radio buttons
-            input.addEventListener('change', (e) => {
-                if (e.target.checked) {
-                    // Update the group field value
-                    const groupField = this.formFields.find(f => f.id === field.groupId);
-                    if (groupField) {
+            input.addEventListener('click', (e) => {
+                const groupField = this.formFields.find(f => f.id === field.groupId);
+                
+                console.log(`Radio button clicked:`, {
+                    fieldName: field.name,
+                    fieldValue: e.target.value,
+                    groupId: field.groupId,
+                    groupName: field.groupName,
+                    currentGroupValue: groupField?.value
+                });
+                
+                if (groupField) {
+                    // Check if this radio button was already selected BEFORE the click
+                    const wasSelected = groupField.value === e.target.value;
+                    
+                    console.log(`Was selected: ${wasSelected}`);
+                    
+                    if (wasSelected) {
+                        // Prevent default radio button behavior
+                        e.preventDefault();
+                        
+                        // Clear the entire radio group
+                        e.target.checked = false;
+                        groupField.value = '';
+                        this.updateFieldValue(field.groupId, '');
+                        
+                        console.log(`Cleared radio group: ${field.groupName}`);
+                        
+                        // Clear all overlay radio buttons in this group
+                        const overlayRadios = document.querySelectorAll(`input[name="${field.groupName}"]`);
+                        overlayRadios.forEach(radio => {
+                            radio.checked = false;
+                        });
+                        
+                        // Clear sidebar radio buttons
+                        const sidebarRadios = document.querySelectorAll(`input[name="radio-${field.groupId}"]`);
+                        sidebarRadios.forEach(radio => {
+                            radio.checked = false;
+                        });
+                        
+                        // Update all individual radio overlays in this group
+                        this.updateFormFieldOverlays();
+                    } else {
+                        // Select this radio button (normal behavior)
                         groupField.value = e.target.value;
                         this.updateFieldValue(field.groupId, e.target.value);
+                        
+                        console.log(`Selected radio button: ${e.target.value} in group: ${field.groupName}`);
+                        
+                        // Update all overlay radio buttons in this group
+                        const overlayRadios = document.querySelectorAll(`input[name="${field.groupName}"]`);
+                        overlayRadios.forEach(radio => {
+                            radio.checked = radio.value === e.target.value;
+                        });
                         
                         // Update sidebar radio buttons
                         const sidebarRadios = document.querySelectorAll(`input[name="radio-${field.groupId}"]`);
@@ -643,6 +713,8 @@ class PDFHandler {
                         // Update all individual radio overlays in this group
                         this.updateFormFieldOverlays();
                     }
+                } else {
+                    console.error(`Could not find group field for groupId: ${field.groupId}`);
                 }
             });
         } else {
@@ -744,7 +816,9 @@ class PDFHandler {
 
             // Fill form fields
             this.formFields.forEach(field => {
-                if (field.value) {
+                // Process radio buttons regardless of value (to handle clearing)
+                // Process other fields only if they have a value
+                if (field.value || field.type === 'radio') {
                     try {
                         if (field.type === 'radio') {
                             // For radio button groups, we need to find the correct PDF field
@@ -788,15 +862,31 @@ class PDFHandler {
                             
                             if (pdfField) {
                                 const fieldType = pdfField.constructor.name;
-                                console.log(`Filling radio field: ${field.name} (${fieldType}) with value: ${field.value}`);
+                                console.log(`Filling radio field: ${field.name} (${fieldType}) with value: ${field.value || 'CLEARED'}`);
                                 
                                 if (fieldType.includes('RadioGroup') || fieldType.includes('Radio')) {
                                     try {
-                                        pdfField.select(field.value);
+                                        if (field.value) {
+                                            // Select the specified value
+                                            pdfField.select(field.value);
+                                        } else {
+                                            // Clear the radio group by not selecting any option
+                                            // Some PDF libraries might have a clear method, but select with empty/null often works
+                                            try {
+                                                pdfField.select('');
+                                            } catch (error) {
+                                                // If select('') doesn't work, try to clear by selecting nothing
+                                                console.log(`Cannot clear radio group ${field.name} with empty string, trying alternative methods`);
+                                                // Some PDFs might need specific clearing approach
+                                                if (typeof pdfField.clear === 'function') {
+                                                    pdfField.clear();
+                                                }
+                                            }
+                                        }
                                     } catch (error) {
-                                        console.warn(`Error selecting radio value ${field.value} for field ${field.name}:`, error);
+                                        console.warn(`Error ${field.value ? 'selecting' : 'clearing'} radio value for field ${field.name}:`, error);
                                         // Try alternative approach - find available options
-                                        if (pdfField.getOptions) {
+                                        if (field.value && pdfField.getOptions) {
                                             const options = pdfField.getOptions();
                                             console.log('Available options:', options);
                                             if (options.includes(field.value)) {
@@ -805,7 +895,15 @@ class PDFHandler {
                                         }
                                     }
                                 } else if (typeof pdfField.select === 'function') {
-                                    pdfField.select(field.value);
+                                    if (field.value) {
+                                        pdfField.select(field.value);
+                                    } else {
+                                        try {
+                                            pdfField.select('');
+                                        } catch (error) {
+                                            console.log(`Cannot clear field ${field.name} with select('')`);
+                                        }
+                                    }
                                 }
                             } else {
                                 console.warn(`Could not find PDF field for radio group: ${field.name}`);
