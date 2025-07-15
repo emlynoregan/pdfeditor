@@ -124,9 +124,10 @@ class PDFHandler {
     async extractFormFields() {
         try {
             this.formFields = [];
-            const radioGroups = new Map(); // Track radio button groups
+            const radioGroups = new Map();
+            const individualRadioButtons = []; // Keep track of individual radio button widgets
             
-            // Get form fields from all pages
+            // Extract form fields from all pages
             for (let pageNum = 1; pageNum <= this.totalPages; pageNum++) {
                 const page = await this.pdfDocument.getPage(pageNum);
                 const annotations = await page.getAnnotations();
@@ -171,7 +172,26 @@ class PDFHandler {
                                     });
                                 }
                                 
-                                // Don't add individual radio buttons to formFields
+                                // Keep individual radio button for overlay positioning
+                                const individualRadio = {
+                                    ...field,
+                                    id: `${field.id}_individual_${individualRadioButtons.length}`,
+                                    groupId: field.id,
+                                    groupName: groupName,
+                                    isIndividualRadio: true,
+                                    originalFieldName: field.name // Store original field name for PDF matching
+                                };
+                                individualRadioButtons.push(individualRadio);
+                                
+                                // Also store original field names in the group for PDF matching
+                                if (!group.originalFieldNames) {
+                                    group.originalFieldNames = [];
+                                }
+                                if (!group.originalFieldNames.includes(field.name)) {
+                                    group.originalFieldNames.push(field.name);
+                                }
+                                
+                                // Don't add individual radio buttons to main formFields
                                 return;
                             }
                             
@@ -185,6 +205,9 @@ class PDFHandler {
             radioGroups.forEach(group => {
                 this.formFields.push(group);
             });
+
+            // Store individual radio buttons for overlay system
+            this.individualRadioButtons = individualRadioButtons;
 
             return this.formFields;
         } catch (error) {
@@ -427,7 +450,7 @@ class PDFHandler {
     }
 
     /**
-     * Update form field overlays on canvas
+     * Update form field overlays on PDF
      */
     updateFormFieldOverlays() {
         const overlay = document.getElementById('form-overlay');
@@ -455,14 +478,21 @@ class PDFHandler {
             height: `${this.canvas.height}px`
         });
 
-        // Get current page form fields (excluding radio groups which are handled in the panel)
+        // Get current page form fields (including individual radio buttons)
         const pageFields = this.formFields.filter(field => 
             field.page === this.currentPage && field.type !== 'radio'
         );
         
-        console.log(`Creating overlays for ${pageFields.length} fields on page ${this.currentPage}`);
+        // Add individual radio buttons for current page
+        const radioButtons = (this.individualRadioButtons || []).filter(field => 
+            field.page === this.currentPage
+        );
         
-        pageFields.forEach(field => {
+        const allFields = [...pageFields, ...radioButtons];
+        
+        console.log(`Creating overlays for ${allFields.length} fields on page ${this.currentPage} (${pageFields.length} regular fields, ${radioButtons.length} radio buttons)`);
+        
+        allFields.forEach(field => {
             const fieldElement = this.createFormFieldOverlay(field);
             overlay.appendChild(fieldElement);
         });
@@ -507,8 +537,20 @@ class PDFHandler {
         const input = this.createFormInput(field);
         div.appendChild(input);
 
+        // Add type-specific classes
+        if (field.type === 'radio' || field.isIndividualRadio) {
+            div.classList.add('radio-field');
+        }
+
         // Add filled class if field has a value
-        if (field.value && field.value.toString().trim() !== '') {
+        if (field.isIndividualRadio) {
+            // For individual radio buttons, check if this option is selected
+            const groupField = this.formFields.find(f => f.id === field.groupId);
+            const isSelected = groupField && groupField.value === (field.radioOptions && field.radioOptions.length > 0 ? field.radioOptions[0] : field.name);
+            if (isSelected) {
+                div.classList.add('filled');
+            }
+        } else if (field.value && field.value.toString().trim() !== '') {
             div.classList.add('filled');
         }
 
@@ -541,8 +583,22 @@ class PDFHandler {
             case 'radio':
                 input = document.createElement('input');
                 input.type = 'radio';
-                input.name = field.name;
-                input.value = field.value || '';
+                
+                if (field.isIndividualRadio) {
+                    // For individual radio buttons in overlays
+                    input.name = field.groupName;
+                    input.value = field.radioOptions && field.radioOptions.length > 0 ? field.radioOptions[0] : field.name;
+                    
+                    // Check if this radio button should be selected
+                    const groupField = this.formFields.find(f => f.id === field.groupId);
+                    if (groupField && groupField.value === input.value) {
+                        input.checked = true;
+                    }
+                } else {
+                    // For grouped radio buttons (sidebar)
+                    input.name = field.name;
+                    input.value = field.value || '';
+                }
                 break;
             
             case 'select':
@@ -568,13 +624,36 @@ class PDFHandler {
         input.dataset.fieldId = field.id;
 
         // Add event listeners
-        input.addEventListener('input', (e) => {
-            this.updateFieldValue(field.id, e.target.value);
-        });
+        if (field.isIndividualRadio) {
+            // Special handling for individual radio buttons
+            input.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    // Update the group field value
+                    const groupField = this.formFields.find(f => f.id === field.groupId);
+                    if (groupField) {
+                        groupField.value = e.target.value;
+                        this.updateFieldValue(field.groupId, e.target.value);
+                        
+                        // Update sidebar radio buttons
+                        const sidebarRadios = document.querySelectorAll(`input[name="radio-${field.groupId}"]`);
+                        sidebarRadios.forEach(radio => {
+                            radio.checked = radio.value === e.target.value;
+                        });
+                        
+                        // Update all individual radio overlays in this group
+                        this.updateFormFieldOverlays();
+                    }
+                }
+            });
+        } else {
+            input.addEventListener('input', (e) => {
+                this.updateFieldValue(field.id, e.target.value);
+            });
 
-        input.addEventListener('change', (e) => {
-            this.updateFieldValue(field.id, e.target.value);
-        });
+            input.addEventListener('change', (e) => {
+                this.updateFieldValue(field.id, e.target.value);
+            });
+        }
 
         // Add focus and blur events to highlight the field
         input.addEventListener('focus', (e) => {
@@ -660,39 +739,108 @@ class PDFHandler {
             const form = pdfDoc.getForm();
             const fields = form.getFields();
 
+            console.log('Available PDF fields:', fields.map(f => ({ name: f.getName(), type: f.constructor.name })));
+            console.log('Form fields to fill:', this.formFields.map(f => ({ name: f.name, type: f.type, value: f.value })));
+
             // Fill form fields
             this.formFields.forEach(field => {
                 if (field.value) {
                     try {
-                        const pdfField = fields.find(f => f.getName() === field.name);
-                        
-                        if (pdfField) {
-                            const fieldType = pdfField.constructor.name;
+                        if (field.type === 'radio') {
+                            // For radio button groups, we need to find the correct PDF field
+                            // Radio buttons in PDFs are usually named after the group, not individual buttons
                             
-                            // Check the actual constructor name for proper type detection
-                            if (fieldType.includes('TextField') || fieldType.includes('Text')) {
-                                pdfField.setText(field.value);
-                            } else if (fieldType.includes('CheckBox') || fieldType.includes('Button')) {
-                                if (field.value === 'Yes' || field.value === true) {
-                                    pdfField.check();
-                                } else {
-                                    pdfField.uncheck();
+                            // First, try to find a direct match by field name
+                            let pdfField = fields.find(f => f.getName() === field.name);
+                            
+                            // If not found, try to find radio group by different naming patterns
+                            if (!pdfField) {
+                                // Try variations of the field name
+                                const namesToTry = [
+                                    field.name,
+                                    field.displayName,
+                                    field.fullyQualifiedName,
+                                    field.mappingName
+                                ].filter(name => name && name.trim());
+                                
+                                for (const name of namesToTry) {
+                                    pdfField = fields.find(f => f.getName() === name);
+                                    if (pdfField) break;
                                 }
-                            } else if (fieldType.includes('RadioGroup') || fieldType.includes('Radio')) {
-                                pdfField.select(field.value);
-                            } else if (fieldType.includes('Dropdown') || fieldType.includes('Choice')) {
-                                pdfField.select(field.value);
-                            } else {
-                                // Try to determine field type by available methods
-                                if (typeof pdfField.setText === 'function') {
-                                    pdfField.setText(field.value);
+                            }
+                            
+                            // If still not found, try to find by checking individual radio buttons
+                            if (!pdfField && this.individualRadioButtons) {
+                                const relatedRadioButtons = this.individualRadioButtons.filter(rb => rb.groupId === field.id);
+                                for (const radioButton of relatedRadioButtons) {
+                                    pdfField = fields.find(f => f.getName() === radioButton.name || f.getName() === radioButton.originalFieldName);
+                                    if (pdfField) break;
+                                }
+                            }
+                            
+                            // If still not found, try using original field names stored in the group
+                            if (!pdfField && field.originalFieldNames && field.originalFieldNames.length > 0) {
+                                for (const originalName of field.originalFieldNames) {
+                                    pdfField = fields.find(f => f.getName() === originalName);
+                                    if (pdfField) break;
+                                }
+                            }
+                            
+                            if (pdfField) {
+                                const fieldType = pdfField.constructor.name;
+                                console.log(`Filling radio field: ${field.name} (${fieldType}) with value: ${field.value}`);
+                                
+                                if (fieldType.includes('RadioGroup') || fieldType.includes('Radio')) {
+                                    try {
+                                        pdfField.select(field.value);
+                                    } catch (error) {
+                                        console.warn(`Error selecting radio value ${field.value} for field ${field.name}:`, error);
+                                        // Try alternative approach - find available options
+                                        if (pdfField.getOptions) {
+                                            const options = pdfField.getOptions();
+                                            console.log('Available options:', options);
+                                            if (options.includes(field.value)) {
+                                                pdfField.select(field.value);
+                                            }
+                                        }
+                                    }
                                 } else if (typeof pdfField.select === 'function') {
                                     pdfField.select(field.value);
-                                } else if (typeof pdfField.check === 'function') {
+                                }
+                            } else {
+                                console.warn(`Could not find PDF field for radio group: ${field.name}`);
+                            }
+                        } else {
+                            // Handle non-radio fields
+                            const pdfField = fields.find(f => f.getName() === field.name);
+                            
+                            if (pdfField) {
+                                const fieldType = pdfField.constructor.name;
+                                console.log(`Filling field: ${field.name} (${fieldType}) with value: ${field.value}`);
+                                
+                                // Check the actual constructor name for proper type detection
+                                if (fieldType.includes('TextField') || fieldType.includes('Text')) {
+                                    pdfField.setText(field.value);
+                                } else if (fieldType.includes('CheckBox') || fieldType.includes('Button')) {
                                     if (field.value === 'Yes' || field.value === true) {
                                         pdfField.check();
                                     } else {
                                         pdfField.uncheck();
+                                    }
+                                } else if (fieldType.includes('Dropdown') || fieldType.includes('Choice')) {
+                                    pdfField.select(field.value);
+                                } else {
+                                    // Try to determine field type by available methods
+                                    if (typeof pdfField.setText === 'function') {
+                                        pdfField.setText(field.value);
+                                    } else if (typeof pdfField.select === 'function') {
+                                        pdfField.select(field.value);
+                                    } else if (typeof pdfField.check === 'function') {
+                                        if (field.value === 'Yes' || field.value === true) {
+                                            pdfField.check();
+                                        } else {
+                                            pdfField.uncheck();
+                                        }
                                     }
                                 }
                             }

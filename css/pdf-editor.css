@@ -189,22 +189,49 @@
 }
 
 .form-field-input[type="checkbox"] {
-    width: 16px;
-    height: 16px;
+    width: auto;
+    height: auto;
+    min-width: 16px;
+    min-height: 16px;
     margin: 2px;
     cursor: pointer;
 }
 
 .form-field-input[type="radio"] {
-    width: 16px;
-    height: 16px;
+    width: auto;
+    height: auto;
+    min-width: 16px;
+    min-height: 16px;
     margin: 2px;
     cursor: pointer;
+    transform: scale(1.2);
+}
+
+.form-field-input[type="radio"]:checked {
+    accent-color: #007bff;
 }
 
 .form-field-input[type="checkbox"]:focus,
 .form-field-input[type="radio"]:focus {
     box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.5);
+}
+
+.form-field-overlay.radio-field {
+    border-color: #f59e0b;
+    background-color: rgba(245, 158, 11, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.form-field-overlay.radio-field:hover {
+    border-color: #d97706;
+    background-color: rgba(245, 158, 11, 0.2);
+}
+
+.form-field-overlay.radio-field.filled {
+    border-color: #059669;
+    background-color: rgba(5, 150, 105, 0.1);
 }
 
 select.form-field-input {

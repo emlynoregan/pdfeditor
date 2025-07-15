@@ -568,6 +568,12 @@ class UIManager {
                     radio.addEventListener('change', (e) => {
                         if (e.target.checked) {
                             window.pdfHandler.updateFieldValue(field.id, e.target.value);
+                            
+                            // Update overlay radio buttons
+                            const overlayRadios = document.querySelectorAll(`input[name="${field.name}"]`);
+                            overlayRadios.forEach(overlayRadio => {
+                                overlayRadio.checked = overlayRadio.value === e.target.value;
+                            });
                         }
                     });
                 });
