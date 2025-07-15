@@ -143,6 +143,7 @@ class PDFHandler {
                                         name: groupName,
                                         type: 'radio',
                                         page: field.page,
+                                        rect: field.rect, // Include rect from first radio button
                                         options: [],
                                         value: '',
                                         id: field.id
@@ -265,7 +266,7 @@ class PDFHandler {
     }
 
     /**
-     * Render PDF page to canvas
+     * Render PDF page
      * @param {number} pageNum - Page number to render
      * @returns {Promise<void>}
      */
@@ -273,6 +274,10 @@ class PDFHandler {
         try {
             if (!this.pdfDocument) {
                 throw new Error('No PDF loaded');
+            }
+
+            if (pageNum < 1 || pageNum > this.totalPages) {
+                throw new Error(`Invalid page number: ${pageNum}. Must be between 1 and ${this.totalPages}`);
             }
 
             const page = await this.pdfDocument.getPage(pageNum);
@@ -325,8 +330,10 @@ class PDFHandler {
         overlay.style.width = `${this.canvas.width}px`;
         overlay.style.height = `${this.canvas.height}px`;
 
-        // Get current page form fields
-        const pageFields = this.formFields.filter(field => field.page === this.currentPage);
+        // Get current page form fields (excluding radio groups which are handled in the panel)
+        const pageFields = this.formFields.filter(field => 
+            field.page === this.currentPage && field.type !== 'radio'
+        );
         
         pageFields.forEach(field => {
             const fieldElement = this.createFormFieldOverlay(field);
@@ -343,14 +350,24 @@ class PDFHandler {
         const div = document.createElement('div');
         div.className = 'form-field-overlay';
         
-        // Calculate position accounting for PDF coordinate system (bottom-left origin)
-        const fieldHeight = (field.rect[3] - field.rect[1]) * this.scale;
-        const fieldWidth = (field.rect[2] - field.rect[0]) * this.scale;
-        
-        div.style.left = `${field.rect[0] * this.scale}px`;
-        div.style.top = `${this.canvas.height - (field.rect[3] * this.scale)}px`;
-        div.style.width = `${fieldWidth}px`;
-        div.style.height = `${fieldHeight}px`;
+        // Check if field has valid rect data
+        if (!field.rect || !Array.isArray(field.rect) || field.rect.length < 4) {
+            console.warn('Invalid field rect data:', field);
+            // Set default position if rect is invalid
+            div.style.left = '0px';
+            div.style.top = '0px';
+            div.style.width = '100px';
+            div.style.height = '20px';
+        } else {
+            // Calculate position accounting for PDF coordinate system (bottom-left origin)
+            const fieldHeight = (field.rect[3] - field.rect[1]) * this.scale;
+            const fieldWidth = (field.rect[2] - field.rect[0]) * this.scale;
+            
+            div.style.left = `${field.rect[0] * this.scale}px`;
+            div.style.top = `${this.canvas.height - (field.rect[3] * this.scale)}px`;
+            div.style.width = `${fieldWidth}px`;
+            div.style.height = `${fieldHeight}px`;
+        }
 
         const input = this.createFormInput(field);
         div.appendChild(input);

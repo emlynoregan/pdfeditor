@@ -318,7 +318,22 @@ class UIManager {
      * @param {Object} detail - Field change details
      */
     handleFieldValueChanged(detail) {
-        this.updateFormFieldPanel(detail.fieldId, detail.value);
+        // Only update the specific field that changed, not the entire panel
+        const fieldInput = document.getElementById(`field-${detail.fieldId}`);
+        if (fieldInput) {
+            // Update the value without losing focus
+            if (fieldInput.type === 'checkbox') {
+                fieldInput.checked = detail.value === 'Yes' || detail.value === true;
+            } else if (fieldInput.tagName === 'SELECT') {
+                fieldInput.value = detail.value;
+            } else {
+                // For text inputs and textareas, only update if the value is different
+                // and the field is not currently focused to avoid interrupting typing
+                if (fieldInput.value !== detail.value && document.activeElement !== fieldInput) {
+                    fieldInput.value = detail.value;
+                }
+            }
+        }
     }
 
     /**
