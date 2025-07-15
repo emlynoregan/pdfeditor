@@ -10,6 +10,9 @@ body {
     line-height: 1.6;
     color: #333;
     background-color: #f8fafc;
+    margin: 0;
+    padding: 0;
+    padding-bottom: 4rem; /* Reserve space for footer */
 }
 
 .container {
@@ -538,4 +541,66 @@ body {
     .storage-bar {
         background-color: #374151;
     }
+    
+    .footer {
+        background: #1f2937;
+        border-color: #374151;
+    }
+    
+    .footer-text {
+        color: #d1d5db;
+    }
+    
+    .footer-link {
+        color: #60a5fa;
+    }
+    
+    .footer-link:hover {
+        color: #93c5fd;
+    }
+}
+
+/* Footer Styles */
+.footer {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border-top: 1px solid #e2e8f0;
+    padding: 1rem 0;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    z-index: 1000;
+}
+
+.footer-text {
+    text-align: center;
+    color: #64748b;
+    font-size: 0.875rem;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.footer-link {
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.footer-link:hover {
+    color: #1d4ed8;
+    text-decoration: underline;
+}
+
+.footer-link:focus {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
+/* Main content with normal flow */
+.main {
+    padding: 2rem 0;
+    min-height: calc(100vh - 8rem); /* Ensure minimum height minus header/footer space */
 } 
