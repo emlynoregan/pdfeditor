@@ -715,6 +715,7 @@ class UIManager {
                     if (field.type === 'checkbox') {
                         input.addEventListener('change', (e) => {
                             const value = e.target.checked ? 'Yes' : 'No';
+                            console.log(`🔲 Sidebar checkbox change event - Field: ${field.name || field.id}, Checked: ${e.target.checked}, Value: ${value}`);
                             window.pdfHandler.updateFieldValue(field.id, value);
                         });
                     } else if (field.type === 'select') {

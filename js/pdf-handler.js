@@ -400,7 +400,9 @@ class PDFHandler {
             case 'Ch':
                 return annotation.options && annotation.options.length > 0 ? 'select' : 'text';
             case 'Btn':
-                return annotation.checkBox ? 'checkbox' : 'radio';
+                const isCheckbox = annotation.checkBox;
+                console.log(`🔲 Button field detection - Field: ${annotation.fieldName || 'unknown'}, checkBox property: ${isCheckbox}, Type: ${isCheckbox ? 'checkbox' : 'radio'}`);
+                return isCheckbox ? 'checkbox' : 'radio';
             case 'Sig':
                 return 'signature';
             default:
@@ -587,6 +589,7 @@ class PDFHandler {
                 input.type = 'checkbox';
                 input.checked = field.value === 'Yes' || field.value === true;
                 input.className += ' checkbox';
+                console.log(`🔲 Creating checkbox input - Field: ${field.name || field.id}, Value: ${field.value}, Checked: ${input.checked}`);
                 break;
             
             case 'radio':
@@ -689,11 +692,23 @@ class PDFHandler {
             });
         } else {
             input.addEventListener('input', (e) => {
-                this.updateFieldValue(field.id, e.target.value);
+                if (field.type === 'checkbox') {
+                    const value = e.target.checked ? 'Yes' : 'No';
+                    console.log(`🔲 Overlay checkbox input event - Field: ${field.name || field.id}, Checked: ${e.target.checked}, Value: ${value}`);
+                    this.updateFieldValue(field.id, value);
+                } else {
+                    this.updateFieldValue(field.id, e.target.value);
+                }
             });
 
             input.addEventListener('change', (e) => {
-                this.updateFieldValue(field.id, e.target.value);
+                if (field.type === 'checkbox') {
+                    const value = e.target.checked ? 'Yes' : 'No';
+                    console.log(`🔲 Overlay checkbox change event - Field: ${field.name || field.id}, Checked: ${e.target.checked}, Value: ${value}`);
+                    this.updateFieldValue(field.id, value);
+                } else {
+                    this.updateFieldValue(field.id, e.target.value);
+                }
             });
         }
 
@@ -723,6 +738,9 @@ class PDFHandler {
     async updateFieldValue(fieldId, value) {
         const field = this.formFields.find(f => f.id === fieldId);
         if (field) {
+            if (field.type === 'checkbox') {
+                console.log(`🔲 Updating checkbox field value - Field: ${field.name || field.id}, Old Value: ${field.value}, New Value: ${value}`);
+            }
             field.value = value;
             
             // Save to localStorage if we have a PDF ID
@@ -777,7 +795,9 @@ class PDFHandler {
                             radio.checked = radio.value === value;
                         });
                     } else if (field.type === 'checkbox') {
-                        sidebarInput.checked = value === 'Yes' || value === 'true' || value === true;
+                        const isChecked = value === 'Yes' || value === 'true' || value === true;
+                        sidebarInput.checked = isChecked;
+                        console.log(`🔲 Setting checkbox value - Field: ${field.name || field.id}, Value: ${value}, Checked: ${isChecked}`);
                     } else {
                         sidebarInput.value = value;
                     }

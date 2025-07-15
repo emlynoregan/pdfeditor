@@ -179,12 +179,15 @@
 }
 
 .form-field-input[type="checkbox"] {
-    width: auto;
-    height: auto;
+    width: 16px;
+    height: 16px;
     min-width: 16px;
     min-height: 16px;
-    margin: 2px;
+    margin: 0;
     cursor: pointer;
+    vertical-align: middle;
+    position: relative;
+    top: -1px; /* Fine-tune vertical alignment */
 }
 
 .form-field-input[type="radio"] {
@@ -220,6 +223,33 @@
 }
 
 .form-field-overlay.radio-field.filled {
+    border-color: #059669;
+    background-color: rgba(5, 150, 105, 0.1);
+}
+
+/* Checkbox overlay specific styles */
+.form-field-overlay.checkbox-field {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 2px 4px;
+    min-height: 18px;
+}
+
+.form-field-overlay.checkbox-field .form-field-input {
+    margin: 0;
+    vertical-align: middle;
+    position: relative;
+    top: 0;
+    transform: none;
+}
+
+.form-field-overlay.checkbox-field:hover {
+    border-color: #10b981;
+    background-color: rgba(16, 185, 129, 0.1);
+}
+
+.form-field-overlay.checkbox-field.filled {
     border-color: #059669;
     background-color: rgba(5, 150, 105, 0.1);
 }
