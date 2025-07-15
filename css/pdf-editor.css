@@ -164,6 +164,19 @@
     color: #333;
 }
 
+.field-tooltip {
+    margin-left: 5px;
+    cursor: help;
+    font-size: 12px;
+    color: #007bff;
+    display: inline-block;
+}
+
+.field-tooltip:hover {
+    color: #0056b3;
+    transform: scale(1.1);
+}
+
 .form-field-input-panel {
     width: 100%;
     padding: 10px;

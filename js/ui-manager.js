@@ -605,7 +605,7 @@ class UIManager {
                             <div class="radio-options">
                                 ${radioOptions}
                             </div>
-                            <small class="field-note">Radio button group: ${field.name}</small>
+                            <small class="field-note">Radio button group: ${field.displayName || field.name}</small>
                         </div>
                     `;
                 } else {
@@ -613,7 +613,7 @@ class UIManager {
                     inputHtml = `
                         <div class="radio-field-container">
                             <input type="text" class="form-field-input-panel" id="field-${field.id}" value="${field.value || ''}" ${field.readonly ? 'readonly' : ''} placeholder="Enter radio button value">
-                            <small class="field-note">Radio button group: ${field.name}</small>
+                            <small class="field-note">Radio button group: ${field.displayName || field.name}</small>
                         </div>
                     `;
                 }
@@ -636,15 +636,30 @@ class UIManager {
                 inputHtml = `<input type="text" class="form-field-input-panel" id="field-${field.id}" value="${field.value || ''}" ${field.readonly ? 'readonly' : ''}>`;
         }
 
+        // Build field info with additional details
+        let fieldInfo = `Page ${field.page} • ${field.type} field`;
+        
+        // Add technical field name if different from display name
+        if (field.name && field.displayName && field.name !== field.displayName) {
+            fieldInfo += ` • Field: ${field.name}`;
+        }
+        
+        // Add tooltip if available
+        let tooltipHtml = '';
+        if (field.tooltip && field.tooltip.trim()) {
+            tooltipHtml = `<span class="field-tooltip" title="${field.tooltip}">ℹ️</span>`;
+        }
+
         return `
             <div class="form-field-item ${fieldTypeClass}">
                 <label class="form-field-label" for="field-${field.id}">
-                    ${field.name || 'Unnamed Field'}
+                    ${field.displayName || field.name || 'Unnamed Field'}
                     ${field.required ? '<span class="text-red-500">*</span>' : ''}
+                    ${tooltipHtml}
                 </label>
                 ${inputHtml}
                 <div class="form-field-info">
-                    Page ${field.page} • ${field.type} field
+                    ${fieldInfo}
                 </div>
             </div>
         `;

@@ -141,17 +141,28 @@ class PDFHandler {
                                 if (!radioGroups.has(groupName)) {
                                     radioGroups.set(groupName, {
                                         name: groupName,
+                                        displayName: field.displayName || field.name,
                                         type: 'radio',
                                         page: field.page,
                                         rect: field.rect, // Include rect from first radio button
                                         options: [],
                                         value: '',
-                                        id: field.id
+                                        id: field.id,
+                                        tooltip: field.tooltip,
+                                        mappingName: field.mappingName,
+                                        fullyQualifiedName: field.fullyQualifiedName
                                     });
                                 }
                                 
                                 // Add radio option to group
                                 const group = radioGroups.get(groupName);
+                                
+                                // Update group display name if current field has a better one
+                                if (field.displayName && field.displayName !== field.name && 
+                                    group.displayName === group.name) {
+                                    group.displayName = field.displayName;
+                                }
+                                
                                 if (field.radioOptions && field.radioOptions.length > 0) {
                                     field.radioOptions.forEach(option => {
                                         if (!group.options.includes(option)) {
@@ -213,7 +224,6 @@ class PDFHandler {
             let radioGroup = null;
             let radioOptions = [];
             if (fieldType === 'radio') {
-                radioGroup = annotation.fieldName || annotation.alternativeText || `radio_group_${this.formFields.length}`;
                 // For radio buttons, options might be in buttonValue or similar
                 if (annotation.buttonValue) {
                     radioOptions = [annotation.buttonValue];
@@ -222,9 +232,111 @@ class PDFHandler {
                 }
             }
 
+            // Extract more descriptive information
+            const fieldName = annotation.fieldName || `field_${this.formFields.length + 1}`;
+            const alternativeText = annotation.alternativeText || annotation.tooltip || 
+                                    (annotation.contentsObj && annotation.contentsObj.str) || '';
+            const mappingName = annotation.mappingName || annotation.exportName || '';
+            const fullyQualifiedName = annotation.fullyQualifiedName || '';
+            
+            // Choose the most descriptive display name
+            let displayName = fieldName;
+            if (alternativeText && alternativeText.trim()) {
+                displayName = alternativeText.trim();
+            } else if (mappingName && mappingName.trim() && mappingName !== fieldName) {
+                displayName = mappingName.trim();
+            } else if (fullyQualifiedName && fullyQualifiedName.includes('.')) {
+                // For hierarchical names like "form.section.fieldname", use the last part
+                const parts = fullyQualifiedName.split('.');
+                const lastPart = parts[parts.length - 1];
+                if (lastPart && lastPart !== fieldName) {
+                    displayName = lastPart;
+                }
+            }
+            
+            // Improve field name formatting for better readability
+            if (displayName && displayName === fieldName) {
+                // Handle common generic patterns
+                if (displayName.match(/^Text\d+$/)) {
+                    // Convert "Text3" to "Text Field 3"
+                    displayName = displayName.replace(/^Text(\d+)$/, 'Text Field $1');
+                } else if (displayName.match(/^Dropdown\d+$/)) {
+                    // Convert "Dropdown1" to "Dropdown Field 1"
+                    displayName = displayName.replace(/^Dropdown(\d+)$/, 'Dropdown Field $1');
+                } else if (displayName.match(/^Group\d+[a-z]?$/)) {
+                    // Convert "Group2" to "Group 2", "Group2a" to "Group 2a"
+                    displayName = displayName.replace(/^Group(\d+)([a-z]?)$/, 'Group $1$2');
+                } else {
+                    // Convert common patterns to more readable names
+                    displayName = displayName
+                        .replace(/([A-Z])/g, ' $1') // Add space before capital letters
+                        .replace(/[_-]/g, ' ') // Replace underscores and hyphens with spaces
+                        .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+                        .trim()
+                        .replace(/\b\w/g, l => l.toUpperCase()); // Capitalize first letter of each word
+                }
+            }
+            
+            // Set radio group name after displayName is calculated
+            if (fieldType === 'radio') {
+                radioGroup = displayName || fieldName || `radio_group_${this.formFields.length}`;
+            }
+            
+            // Add context-based improvements
+            let fieldContext = '';
+            if (annotation.actions) {
+                fieldContext = ' (Button)';
+            } else if (annotation.isTooltipOnly) {
+                fieldContext = ' (Tooltip)';
+            } else if (fieldType === 'radio' && annotation.buttonValue) {
+                fieldContext = ` (Option: ${annotation.buttonValue})`;
+            }
+            
+            // Add context to display name if helpful
+            if (fieldContext && !displayName.includes('Button') && !displayName.includes('Option')) {
+                displayName = displayName + fieldContext;
+            }
+            
+            // Add some smart context based on field position and type
+            if (fieldType === 'text' && displayName.match(/^Text Field \d+$/)) {
+                // Try to infer context from field position
+                const x = rect[0];
+                const y = rect[1];
+                const width = rect[2] - rect[0];
+                const height = rect[3] - rect[1];
+                
+                // Small text fields might be for codes, IDs, etc.
+                if (width < 100) {
+                    displayName = displayName.replace('Text Field', 'Code Field');
+                } else if (width > 300) {
+                    displayName = displayName.replace('Text Field', 'Long Text Field');
+                } else if (height > 50) {
+                    displayName = displayName.replace('Text Field', 'Multi-line Text Field');
+                }
+            }
+            
+            // Debug logging to help understand field properties
+            console.log(`🔍 "${fieldName}" → "${displayName}" (${fieldType})`);
+            
+            // Log only interesting properties
+            const interestingProps = [];
+            if (alternativeText) interestingProps.push(`alt: "${alternativeText}"`);
+            if (annotation.actions) interestingProps.push(`actions: ${Object.keys(annotation.actions)}`);
+            if (annotation.defaultFieldValue) interestingProps.push(`default: "${annotation.defaultFieldValue}"`);
+            if (annotation.options && annotation.options.length > 0) interestingProps.push(`options: [${annotation.options.join(', ')}]`);
+            if (annotation.buttonValue) interestingProps.push(`buttonValue: "${annotation.buttonValue}"`);
+            if (annotation.contentsObj && annotation.contentsObj.str) interestingProps.push(`contents: "${annotation.contentsObj.str}"`);
+            
+            if (interestingProps.length > 0) {
+                console.log(`   ${interestingProps.join(' • ')}`);
+            }
+            console.log(`   Position: [${Math.round(rect[0])}, ${Math.round(rect[1])}, ${Math.round(rect[2])}, ${Math.round(rect[3])}]`);
+            console.log(`   ─────────────────────────────────────────────────────────────────`);
+
             return {
                 id: annotation.id || `field_${Date.now()}_${Math.random().toString(36).substr(2)}`,
-                name: annotation.fieldName || `field_${this.formFields.length + 1}`,
+                name: fieldName,
+                displayName: displayName,
                 type: fieldType,
                 page: pageNum,
                 rect: rect,
@@ -235,7 +347,10 @@ class PDFHandler {
                 required: annotation.required || false,
                 readonly: annotation.readonly || false,
                 multiline: annotation.multiline || false,
-                maxLength: annotation.maxLength || null
+                maxLength: annotation.maxLength || null,
+                tooltip: alternativeText,
+                mappingName: mappingName,
+                fullyQualifiedName: fullyQualifiedName
             };
         } catch (error) {
             console.error('Error processing form field:', error);
