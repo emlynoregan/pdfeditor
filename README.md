@@ -2,7 +2,7 @@
 
 A free, client-side PDF editor that allows users to upload, edit, fill forms, and download PDFs directly in their browser. No server uploads required - all processing happens locally on your device.
 
-> **💖 Built with Love**: This PDF editor was created by Emlyn O'Regan for Jodie O'Regan, demonstrating the power of modern web technologies for secure, client-side document processing.
+> **💖 Built with Love**: This PDF editor was created by [Emlyn O'Regan](https://emlynoregan.com) for Jodie O'Regan, demonstrating the power of modern web technologies for secure, client-side document processing. Vibe coded using **Cursor & Claude-4-Sonnet** for a perfect blend of AI-assisted development and human creativity!
 
 > **✅ Latest Update**: All major functionality has been implemented and tested. The app now supports complete PDF upload, editing, form filling, and persistent storage workflow with robust error handling.
 
