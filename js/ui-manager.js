@@ -421,6 +421,9 @@ class UIManager {
                 window.pdfHandler = new PDFHandler();
             }
 
+            // Set the current PDF ID for form field persistence
+            window.pdfHandler.currentPDFId = pdfId;
+
             await window.pdfHandler.loadPDFFromBase64(pdfData.data);
             await window.pdfHandler.renderPage(1);
 
@@ -428,6 +431,12 @@ class UIManager {
             this.updatePageDisplay();
             this.updateZoomDisplay();
             this.updateFormFieldPanel();
+            
+            // Load saved form field values after everything is ready
+            // Use nextTick to ensure DOM is fully updated
+            setTimeout(() => {
+                window.pdfHandler.loadFieldValuesFromStorage();
+            }, 50);
 
         } catch (error) {
             console.error('Error loading PDF in editor:', error);

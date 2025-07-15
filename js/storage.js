@@ -130,6 +130,10 @@ class StorageManager {
             }
 
             localStorage.setItem(this.STORAGE_KEY, JSON.stringify(filteredPdfs));
+            
+            // Also clear form field values for this PDF
+            this.clearFormFieldValues(id);
+            
             return true;
         } catch (error) {
             console.error('Error deleting PDF:', error);
@@ -144,6 +148,10 @@ class StorageManager {
     clearAll() {
         try {
             localStorage.removeItem(this.STORAGE_KEY);
+            
+            // Also clear all form field values
+            this.clearAllFormFieldValues();
+            
             return true;
         } catch (error) {
             console.error('Error clearing storage:', error);
@@ -275,6 +283,65 @@ class StorageManager {
                typeof pdfData.data === 'string' && 
                pdfData.metadata && 
                typeof pdfData.metadata === 'object';
+    }
+
+    /**
+     * Save form field values for a PDF
+     * @param {string} pdfId - PDF identifier
+     * @param {Object} fieldValues - Field values by field ID
+     */
+    saveFormFieldValues(pdfId, fieldValues) {
+        try {
+            const key = `pdf-fields-${pdfId}`;
+            localStorage.setItem(key, JSON.stringify(fieldValues));
+        } catch (error) {
+            console.error('Error saving form field values:', error);
+        }
+    }
+
+    /**
+     * Load form field values for a PDF
+     * @param {string} pdfId - PDF identifier
+     * @returns {Object} Field values by field ID
+     */
+    loadFormFieldValues(pdfId) {
+        try {
+            const key = `pdf-fields-${pdfId}`;
+            const stored = localStorage.getItem(key);
+            return stored ? JSON.parse(stored) : {};
+        } catch (error) {
+            console.error('Error loading form field values:', error);
+            return {};
+        }
+    }
+
+    /**
+     * Clear form field values for a PDF
+     * @param {string} pdfId - PDF identifier
+     */
+    clearFormFieldValues(pdfId) {
+        try {
+            const key = `pdf-fields-${pdfId}`;
+            localStorage.removeItem(key);
+        } catch (error) {
+            console.error('Error clearing form field values:', error);
+        }
+    }
+
+    /**
+     * Clear all form field values (cleanup)
+     */
+    clearAllFormFieldValues() {
+        try {
+            const keys = Object.keys(localStorage);
+            keys.forEach(key => {
+                if (key.startsWith('pdf-fields-')) {
+                    localStorage.removeItem(key);
+                }
+            });
+        } catch (error) {
+            console.error('Error clearing all form field values:', error);
+        }
     }
 }
 

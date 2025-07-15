@@ -13,6 +13,7 @@ class PDFHandler {
         this.formFields = [];
         this.pdfDocument = null;
         this.pdfBytes = null;
+        this.currentPDFId = null;
         
         // Initialize PDF.js
         this.initializePDFJS();
@@ -723,6 +724,12 @@ class PDFHandler {
         const field = this.formFields.find(f => f.id === fieldId);
         if (field) {
             field.value = value;
+            
+            // Save to localStorage if we have a PDF ID
+            if (this.currentPDFId) {
+                this.saveFieldValuesToStorage();
+            }
+            
             // Trigger custom event for UI updates
             window.dispatchEvent(new CustomEvent('fieldValueChanged', {
                 detail: { fieldId, value, field }
@@ -754,7 +761,39 @@ class PDFHandler {
             }
         });
         
-        // Update UI
+        // Update UI elements directly
+        Object.keys(values).forEach(fieldId => {
+            const field = this.formFields.find(f => f.id === fieldId);
+            if (field && values[fieldId]) {
+                const value = values[fieldId];
+                
+                // Update sidebar form field
+                const sidebarInput = document.getElementById(`field-${fieldId}`);
+                if (sidebarInput) {
+                    if (field.type === 'radio') {
+                        // Update radio buttons
+                        const radioInputs = document.querySelectorAll(`input[name="radio-${fieldId}"]`);
+                        radioInputs.forEach(radio => {
+                            radio.checked = radio.value === value;
+                        });
+                    } else if (field.type === 'checkbox') {
+                        sidebarInput.checked = value === 'Yes' || value === 'true' || value === true;
+                    } else {
+                        sidebarInput.value = value;
+                    }
+                }
+                
+                // Update overlay form fields
+                if (field.type === 'radio') {
+                    const overlayRadios = document.querySelectorAll(`input[name="${field.name}"]`);
+                    overlayRadios.forEach(radio => {
+                        radio.checked = radio.value === value;
+                    });
+                }
+            }
+        });
+        
+        // Update form field overlays
         this.updateFormFieldOverlays();
         
         // Dispatch events for each field to update all UI elements
@@ -766,6 +805,53 @@ class PDFHandler {
                 }));
             }
         });
+    }
+
+    /**
+     * Save form field values to localStorage
+     */
+    saveFieldValuesToStorage() {
+        if (!this.currentPDFId) {
+            console.log('No currentPDFId set, skipping field value saving');
+            return;
+        }
+        
+        try {
+            const storage = new StorageManager();
+            const fieldValues = this.getFormFieldValues();
+            console.log('Saving field values for PDF:', this.currentPDFId, fieldValues);
+            storage.saveFormFieldValues(this.currentPDFId, fieldValues);
+        } catch (error) {
+            console.error('Error saving field values to storage:', error);
+        }
+    }
+
+    /**
+     * Load form field values from localStorage
+     */
+    loadFieldValuesFromStorage() {
+        if (!this.currentPDFId) {
+            console.log('No currentPDFId set, skipping field value loading');
+            return;
+        }
+        
+        try {
+            const storage = new StorageManager();
+            const fieldValues = storage.loadFormFieldValues(this.currentPDFId);
+            
+            console.log('Loading field values for PDF:', this.currentPDFId);
+            console.log('Found saved values:', fieldValues);
+            console.log('Current form fields:', this.formFields.length);
+            
+            if (Object.keys(fieldValues).length > 0) {
+                this.setFormFieldValues(fieldValues);
+                console.log('Applied saved field values');
+            } else {
+                console.log('No saved field values found');
+            }
+        } catch (error) {
+            console.error('Error loading field values from storage:', error);
+        }
     }
 
     /**
