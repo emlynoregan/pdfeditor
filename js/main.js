@@ -11,25 +11,34 @@ let pdfHandler = null;
 /**
  * Initialize the application
  */
-function initializeApp() {
+async function initializeApp() {
     try {
         console.log('🚀 Initializing PDF Editor...');
         
+        // Show initialization loading
+        showInitializationLoading();
+        
         // Check for required dependencies
         if (!checkDependencies()) {
+            hideInitializationLoading();
             showError('Required dependencies not loaded. Please refresh the page.');
             return;
         }
 
-        // Initialize managers
+        // Initialize storage manager and wait for IndexedDB to be ready
+        console.log('📦 Initializing storage...');
         storageManager = new StorageManager();
+        await storageManager.initDB(); // Wait for IndexedDB initialization
+        console.log('✅ Storage initialized');
+        
+        // Initialize UI manager
         uiManager = new UIManager();
         
         // Make uiManager globally accessible for onclick handlers
         window.uiManager = uiManager;
 
         // Check initial state
-        checkInitialState();
+        await checkInitialState();
 
         // Setup keyboard shortcuts
         setupKeyboardShortcuts();
@@ -42,6 +51,9 @@ function initializeApp() {
 
         console.log('✅ PDF Editor initialized successfully');
         
+        // Hide initialization loading
+        hideInitializationLoading();
+        
         // Show welcome message if first time
         if (isFirstTime()) {
             showWelcomeMessage();
@@ -49,6 +61,7 @@ function initializeApp() {
 
     } catch (error) {
         console.error('❌ Error initializing PDF Editor:', error);
+        hideInitializationLoading();
         showError('Failed to initialize application: ' + error.message);
     }
 }
@@ -79,10 +92,10 @@ function checkDependencies() {
 /**
  * Check initial application state
  */
-function checkInitialState() {
+async function checkInitialState() {
     try {
         // Check storage info
-        const storageInfo = storageManager.getStorageInfo();
+        const storageInfo = await storageManager.getStorageInfo();
         console.log('📊 Storage info:', storageInfo);
 
         // Show appropriate initial view
@@ -92,13 +105,13 @@ function checkInitialState() {
             uiManager.showUploadSection();
         }
 
-        // Check storage usage warning
-        if (storageInfo.usagePercentage > 80) {
+        // Check storage usage warning (removed since we don't have usagePercentage anymore)
+        /*if (storageInfo.usagePercentage > 80) {
             uiManager.showNotification(
                 `Storage is ${Math.round(storageInfo.usagePercentage)}% full. Consider deleting some files.`,
                 'warning'
             );
-        }
+        }*/
 
     } catch (error) {
         console.error('Error checking initial state:', error);
@@ -387,6 +400,28 @@ function addDragDropStyles() {
         }
     `;
     document.head.appendChild(style);
+}
+
+/**
+ * Show initialization loading overlay
+ */
+function showInitializationLoading() {
+    const overlay = document.getElementById('loading-overlay');
+    const text = overlay.querySelector('p');
+    if (overlay) {
+        if (text) text.textContent = 'Initializing PDF Editor...';
+        overlay.classList.remove('hidden');
+    }
+}
+
+/**
+ * Hide initialization loading overlay
+ */
+function hideInitializationLoading() {
+    const overlay = document.getElementById('loading-overlay');
+    if (overlay) {
+        overlay.classList.add('hidden');
+    }
 }
 
 // Initialize when DOM is ready

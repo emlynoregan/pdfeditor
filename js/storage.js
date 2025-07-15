@@ -11,8 +11,7 @@ class StorageManager {
         this.useIndexedDB = true;
         this.STORAGE_KEY = 'pdfeditor_files'; // localStorage fallback key
         
-        // Initialize database
-        this.initDB();
+        // Database will be initialized explicitly via initDB()
     }
 
     /**
@@ -102,6 +101,11 @@ class StorageManager {
      * @returns {Promise<Array>} Array of PDF file objects
      */
     async getAllPDFs() {
+        // Ensure database is initialized
+        if (this.useIndexedDB && !this.db) {
+            await this.initDB();
+        }
+        
         if (this.useIndexedDB && this.db) {
             return this.getAllPDFsIndexedDB();
         } else {
@@ -156,6 +160,11 @@ class StorageManager {
      * @returns {Promise<boolean>} Success status
      */
     async savePDF(pdfData) {
+        // Ensure database is initialized
+        if (this.useIndexedDB && !this.db) {
+            await this.initDB();
+        }
+        
         if (this.useIndexedDB && this.db) {
             return this.savePDFIndexedDB(pdfData);
         } else {
