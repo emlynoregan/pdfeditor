@@ -538,6 +538,11 @@ class StorageManager {
         }
     }
 
+    // Alias method for backwards compatibility
+    async loadFormFieldValues(pdfId) {
+        return await this.getFormFieldValues(pdfId);
+    }
+
     async clearFormFieldValues(pdfId) {
         if (!this.isInitialized) {
             await this.initialize();
